@@ -7,6 +7,7 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -167,11 +168,9 @@ def _build_inference_features(
     """
     row: dict[str, float] = {f: 0.0 for f in feature_names}
 
-    # Direct signals from request
-    row["total_line"] = req.total_line
-    row["home_injury_impact"] = req.home_injury_impact
-    row["away_injury_impact"] = req.away_injury_impact
-    row["home_advantage"] = 1.0
+    # Core game context
+    row["total_line"]      = req.total_line
+    row["home_advantage"]  = 1.0
 
     if req.home_rest_days is not None:
         row["home_rest_days"] = float(req.home_rest_days)
@@ -180,7 +179,39 @@ def _build_inference_features(
 
     if req.home_rest_days is not None and req.away_rest_days is not None:
         row["home_rest_advantage"] = float(req.home_rest_days - req.away_rest_days)
-        row["home_back_to_back"] = float(req.home_rest_days <= 1)
-        row["away_back_to_back"] = float(req.away_rest_days <= 1)
+        row["home_back_to_back"]   = float(req.home_rest_days <= 1)
+        row["away_back_to_back"]   = float(req.away_rest_days <= 1)
+
+    # GROUP C — situational context
+    row["wind_speed_mph"]   = req.wind_speed_mph
+    row["temperature_f"]    = req.temperature_f
+    row["is_dome"]          = float(req.is_dome)
+    row["altitude_feet"]    = req.altitude_feet
+    row["is_playoff"]       = float(req.is_playoff)
+    row["altitude_boost"]   = req.altitude_feet / 5280.0
+    row["dome_flag"]        = float(req.is_dome)
+    row["wind_under_signal"] = float(req.wind_speed_mph > 15)
+    row["wind_severity"]    = req.wind_speed_mph / 30.0
+    row["cold_game"]        = float(req.temperature_f < 40)
+    row["hot_game"]         = float(req.temperature_f > 85)
+
+    # GROUP D — market / sharp signals
+    row["line_movement"]       = req.line_movement
+    row["public_over_pct"]     = req.public_over_pct
+    row["sharp_over_pct"]      = req.sharp_over_pct
+    row["ref_foul_rate"]       = req.ref_foul_rate
+    row["ump_walk_rate"]       = req.ump_walk_rate
+    row["sharp_vs_public"]     = req.sharp_over_pct - req.public_over_pct
+    row["line_move_magnitude"] = abs(req.line_movement)
+    row["line_move_direction"] = float(np.sign(req.line_movement))
+
+    # GROUP E — injury counts
+    row["home_key_players_out"] = float(req.home_key_players_out)
+    row["away_key_players_out"] = float(req.away_key_players_out)
+    row["injury_pts_impact"]    = (req.home_key_players_out - req.away_key_players_out) * -3.0
+
+    # Legacy
+    row["home_injury_impact"] = req.home_injury_impact
+    row["away_injury_impact"] = req.away_injury_impact
 
     return pd.DataFrame([row])

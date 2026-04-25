@@ -7,29 +7,37 @@ from collections import defaultdict
 
 import numpy as np
 import pandas as pd
-from nba_api.stats.endpoints import leaguegamelog, teamgamelogs
+from nba_api.stats.endpoints import leaguegamelog
 
 logger = logging.getLogger(__name__)
 
 # nba_api column → our internal stat name
 _STAT_MAP = {
-    "PTS":      "points",
-    "REB":      "rebounds",
-    "AST":      "assists",
-    "STL":      "steals",
-    "BLK":      "blocks",
-    "TOV":      "turnovers",
-    "FG_PCT":   "fieldGoalPct",
-    "FG3_PCT":  "threePointPct",
-    "FT_PCT":   "freeThrowPct",
-    "OREB":     "offensiveRebounds",
+    "PTS":        "points",
+    "REB":        "rebounds",
+    "AST":        "assists",
+    "STL":        "steals",
+    "BLK":        "blocks",
+    "TOV":        "turnovers",
+    "FGM":        "fieldGoalsMade",
+    "FGA":        "fieldGoalAttempts",
+    "FG_PCT":     "fieldGoalPct",
+    "FG3M":       "threesMade",
+    "FG3A":       "threePointAttempts",
+    "FG3_PCT":    "threePointPct",
+    "FTM":        "freeThrowsMade",
+    "FTA":        "freeThrowAttempts",
+    "FT_PCT":     "freeThrowPct",
+    "OREB":       "offensiveRebounds",
+    "DREB":       "defensiveRebounds",
+    "PF":         "personalFouls",
     "PLUS_MINUS": "netRating",
 }
 
-# Seasons to fetch: 2019-20 through 2023-24
-_DEFAULT_SEASONS = ["2019-20", "2020-21", "2021-22", "2022-23", "2023-24"]
+# Denver Nuggets home arena altitude (feet)
+_ALTITUDE_MAP = {"DEN": 5280.0}
 
-# Request delay to avoid rate-limiting NBA stats site
+_DEFAULT_SEASONS = ["2019-20", "2020-21", "2021-22", "2022-23", "2023-24"]
 _DELAY = 0.7
 
 
@@ -38,8 +46,8 @@ def fetch_nba_games(
     delay: float = _DELAY,
 ) -> pd.DataFrame:
     """
-    Pull real NBA regular-season game logs for the requested seasons and
-    return a DataFrame that matches the HistoricalLoader schema.
+    Pull real NBA regular-season game logs and return a DataFrame matching
+    the HistoricalLoader schema, with real advanced stats computed from box scores.
     """
     seasons = seasons or _DEFAULT_SEASONS
     logger.info("Fetching real NBA data for seasons: %s", seasons)
@@ -64,47 +72,97 @@ def fetch_nba_games(
 
     raw = pd.concat(raw_frames, ignore_index=True)
     raw["GAME_DATE"] = pd.to_datetime(raw["GAME_DATE"])
-
-    # Each game has two rows (one per team). Split by home/away then join.
     raw["is_home"] = raw["MATCHUP"].str.contains(r" vs\. ", regex=True)
+
     home = raw[raw["is_home"]].copy()
     away = raw[~raw["is_home"]].copy()
-
     games = home.merge(away, on="GAME_ID", suffixes=("_home", "_away"))
     logger.info("Merged %d games across %d seasons", len(games), len(seasons))
 
     rows: list[dict] = []
     for _, g in games.iterrows():
-        h_pts = int(g["PTS_home"])
-        a_pts = int(g["PTS_away"])
+        h_pts   = int(g["PTS_home"])
+        a_pts   = int(g["PTS_away"])
+        h_fga   = float(g.get("FGA_home", 85) or 85)
+        h_fta   = float(g.get("FTA_home", 22) or 22)
+        h_fg3a  = float(g.get("FG3A_home", 33) or 33)
+        h_oreb  = float(g.get("OREB_home", 10) or 10)
+        h_dreb  = float(g.get("DREB_home", 34) or 34)
+        h_tov   = float(g.get("TOV_home", 14) or 14)
+        a_fga   = float(g.get("FGA_away", 85) or 85)
+        a_fta   = float(g.get("FTA_away", 22) or 22)
+        a_fg3a  = float(g.get("FG3A_away", 33) or 33)
+        a_oreb  = float(g.get("OREB_away", 10) or 10)
+        a_dreb  = float(g.get("DREB_away", 34) or 34)
+        a_tov   = float(g.get("TOV_away", 14) or 14)
+
+        # Hollinger possession estimate
+        h_poss = max(1.0, h_fga - h_oreb + h_tov + 0.44 * h_fta)
+        a_poss = max(1.0, a_fga - a_oreb + a_tov + 0.44 * a_fta)
+
+        home_team = g["TEAM_ABBREVIATION_home"]
+        away_team = g["TEAM_ABBREVIATION_away"]
         total = h_pts + a_pts
 
         row: dict = {
-            "game_id": str(g["GAME_ID"]),
-            "sport":   "nba",
-            "season":  _season_year(g["GAME_DATE_home"]),
-            "game_date": g["GAME_DATE_home"],
-            "home_team": g["TEAM_ABBREVIATION_home"],
-            "away_team": g["TEAM_ABBREVIATION_away"],
+            "game_id":    str(g["GAME_ID"]),
+            "sport":      "nba",
+            "season":     _season_year(g["GAME_DATE_home"]),
+            "game_date":  g["GAME_DATE_home"],
+            "home_team":  home_team,
+            "away_team":  away_team,
             "home_score": h_pts,
             "away_score": a_pts,
             "total":      total,
-            "total_line": np.nan,   # filled by _compute_proxy_lines
-            "result_over": np.nan,  # filled after proxy line
-            "venue": f"{g['TEAM_ABBREVIATION_home']}_arena",
+            "total_line": np.nan,
+            "result_over": np.nan,
+            "venue":      f"{home_team}_arena",
         }
 
+        # Raw box-score stats
         for api_col, stat_name in _STAT_MAP.items():
             row[f"home_{stat_name}"] = float(g.get(f"{api_col}_home", 0) or 0)
             row[f"away_{stat_name}"] = float(g.get(f"{api_col}_away", 0) or 0)
 
-        # Approximate advanced stats from basic box score
-        row["home_offensiveRating"] = float(h_pts)         # correlated proxy
-        row["away_offensiveRating"] = float(a_pts)
-        row["home_defensiveRating"] = float(a_pts)         # points allowed
-        row["away_defensiveRating"] = float(h_pts)
-        row["home_pace"] = 100.0                           # default; no per-game pace in basic log
-        row["away_pace"] = 100.0
+        # Real advanced stats derived from possession formula
+        row["home_possessions"]       = h_poss
+        row["away_possessions"]       = a_poss
+        row["home_pointsPerPossession"] = h_pts / h_poss
+        row["away_pointsPerPossession"] = a_pts / a_poss
+        row["home_trueShooting"]      = h_pts / max(1.0, 2 * (h_fga + 0.44 * h_fta))
+        row["away_trueShooting"]      = a_pts / max(1.0, 2 * (a_fga + 0.44 * a_fta))
+        row["home_offensiveRating"]   = 100.0 * h_pts / h_poss
+        row["away_offensiveRating"]   = 100.0 * a_pts / a_poss
+        row["home_defensiveRating"]   = 100.0 * a_pts / h_poss   # pts allowed per 100 home poss
+        row["away_defensiveRating"]   = 100.0 * h_pts / a_poss
+        row["home_pace"]              = h_poss
+        row["away_pace"]              = a_poss
+        row["home_assistRate"]        = float(g.get("AST_home", 25) or 25) / h_poss
+        row["away_assistRate"]        = float(g.get("AST_away", 25) or 25) / a_poss
+        row["home_drebRate"]          = h_dreb / max(1.0, h_dreb + a_oreb)
+        row["away_drebRate"]          = a_dreb / max(1.0, a_dreb + h_oreb)
+        row["home_ftRate"]            = h_fta / max(1.0, h_fga)
+        row["away_ftRate"]            = a_fta / max(1.0, a_fga)
+        row["home_threePointRate"]    = h_fg3a / max(1.0, h_fga)
+        row["away_threePointRate"]    = a_fg3a / max(1.0, a_fga)
+
+        # GROUP C — situational context
+        row["wind_speed_mph"]       = 0.0          # indoor
+        row["temperature_f"]        = 72.0          # indoor
+        row["is_dome"]              = 1.0           # NBA is always indoor
+        row["altitude_feet"]        = _ALTITUDE_MAP.get(home_team, 0.0)
+        row["is_playoff"]           = 0.0           # regular season only
+
+        # GROUP D — market signals (zero at training; overridden at inference)
+        row["line_movement"]        = 0.0
+        row["public_over_pct"]      = 0.5
+        row["sharp_over_pct"]       = 0.5
+        row["ref_foul_rate"]        = 0.0
+        row["ump_walk_rate"]        = 0.0
+
+        # GROUP E — injury counts
+        row["home_key_players_out"] = 0.0
+        row["away_key_players_out"] = 0.0
 
         rows.append(row)
 
@@ -121,31 +179,22 @@ def fetch_nba_games(
 
 
 def _season_year(dt: pd.Timestamp) -> int:
-    """NBA season year is the year the season *starts* (Oct → Apr)."""
     return int(dt.year) if dt.month >= 10 else int(dt.year) - 1
 
 
 def _compute_proxy_lines(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
     """
-    Build a realistic proxy over/under line using a bookmaker-style formula:
-
-        line ≈ home_off_avg + away_off_avg
-                  weighted against each team's recent defensive pace
-
-    We use separate offensive (points scored) and defensive (points allowed)
-    rolling averages over a wider 20-game window.  This is much harder to
-    reconstruct from the 10-game rolling features the model sees, giving a
-    realistic 50-55 % prediction accuracy instead of a trivially learnable line.
+    Bookmaker-style proxy line: blends each team's offensive average against
+    the opponent's recent defensive pace, with calibrated noise.
+    Uses a 20-game window and separate scored/allowed histories so the line
+    is harder to reconstruct from the 10-game rolling features.
     """
     df = df.copy()
-
-    # Track each team's scored/allowed history separately
     team_scored:  dict[str, list[float]] = defaultdict(list)
     team_allowed: dict[str, list[float]] = defaultdict(list)
-
-    lines: list[float] = []
     rng = np.random.default_rng(42)
 
+    lines: list[float] = []
     for _, row in df.iterrows():
         home, away = row["home_team"], row["away_team"]
         h_pts, a_pts = float(row["home_score"]), float(row["away_score"])
@@ -155,17 +204,11 @@ def _compute_proxy_lines(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
         a_off = float(np.mean(team_scored[away][-window:]))  if team_scored[away]  else 111.0
         a_def = float(np.mean(team_allowed[away][-window:])) if team_allowed[away] else 111.0
 
-        # Bookmaker blends offense vs opponent defense; home court adds ~2 pts
-        expected_home = (h_off + a_def) / 2.0 + 1.5
+        expected_home = (h_off + a_def) / 2.0 + 1.5  # home court
         expected_away = (a_off + h_def) / 2.0
-        line = expected_home + expected_away
-
-        # Bookmakers also have their own private edge — model it as small noise
-        line += float(rng.normal(0, 3.0))
-
-        # Round to nearest 0.5 like real lines
+        line = expected_home + expected_away + float(rng.normal(0, 3.0))
         line = round(line * 2) / 2
-        lines.append(max(180.0, min(280.0, line)))   # sanity clamp
+        lines.append(float(np.clip(line, 180.0, 280.0)))
 
         team_scored[home].append(h_pts)
         team_allowed[home].append(a_pts)

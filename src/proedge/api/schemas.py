@@ -19,8 +19,29 @@ class PredictionRequest(BaseModel):
     total_line: float = Field(..., gt=0, description="The posted over/under line")
     home_rest_days: int | None = Field(None, ge=0, le=14)
     away_rest_days: int | None = Field(None, ge=0, le=14)
+
+    # GROUP C — situational context
+    wind_speed_mph: float = Field(0.0, ge=0.0, le=100.0, description="Wind speed (NFL/MLB outdoor)")
+    temperature_f: float = Field(72.0, ge=-20.0, le=120.0, description="Game-time temperature")
+    is_dome: bool = Field(True, description="Indoor/dome stadium (removes weather variance)")
+    altitude_feet: float = Field(0.0, ge=0.0, le=8000.0, description="Stadium altitude (Denver=5280)")
+    is_playoff: bool = Field(False, description="Playoff game (typically lower-scoring)")
+
+    # GROUP D — market / sharp signals
+    line_movement: float = Field(0.0, ge=-20.0, le=20.0, description="Closing minus opening line")
+    public_over_pct: float = Field(0.5, ge=0.0, le=1.0, description="Fraction of public bets on Over")
+    sharp_over_pct: float = Field(0.5, ge=0.0, le=1.0, description="Fraction of sharp money on Over")
+    ref_foul_rate: float = Field(0.0, ge=-10.0, le=10.0, description="NBA ref fouls/game delta from avg")
+    ump_walk_rate: float = Field(0.0, ge=-5.0, le=5.0, description="MLB ump walks/game delta from avg")
+
+    # GROUP E — injury counts
+    home_key_players_out: int = Field(0, ge=0, le=15, description="Key home players unavailable")
+    away_key_players_out: int = Field(0, ge=0, le=15, description="Key away players unavailable")
+
+    # Legacy injury impact (kept for backward compat)
     home_injury_impact: float = Field(0.0, ge=0.0, le=1.0)
     away_injury_impact: float = Field(0.0, ge=0.0, le=1.0)
+
     include_features: bool = False
 
     @field_validator("home_team", "away_team")

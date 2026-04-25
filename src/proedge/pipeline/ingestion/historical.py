@@ -123,6 +123,24 @@ class HistoricalLoader:
                             0.0, float(rng.normal(base + strength * std * 0.3, std))
                         )
 
+                # GROUP C — situational context (sport-aware defaults)
+                row["wind_speed_mph"]       = 0.0 if sport == "nba" else float(rng.uniform(0, 15))
+                row["temperature_f"]        = 72.0 if sport == "nba" else float(rng.uniform(45, 85))
+                row["is_dome"]              = 1.0 if sport == "nba" else float(rng.choice([0, 1], p=[0.7, 0.3]))
+                row["altitude_feet"]        = 5280.0 if home in ("DEN", "COL") else 0.0
+                row["is_playoff"]           = 0.0
+
+                # GROUP D — market signals (neutral at training time)
+                row["line_movement"]        = 0.0
+                row["public_over_pct"]      = 0.5
+                row["sharp_over_pct"]       = 0.5
+                row["ref_foul_rate"]        = 0.0
+                row["ump_walk_rate"]        = 0.0
+
+                # GROUP E — injury counts (0 at training)
+                row["home_key_players_out"] = 0.0
+                row["away_key_players_out"] = 0.0
+
                 all_rows.append(row)
 
         df = pd.DataFrame(all_rows)
@@ -159,22 +177,46 @@ class HistoricalLoader:
 
 _STAT_DISTRIBUTIONS: dict[str, dict[str, tuple[float, float]]] = {
     "nfl": {
+        # Basic
         "passingYards": (240, 60), "rushingYards": (120, 40),
         "receivingYards": (240, 60), "pointsScored": (23, 10),
         "pointsAllowed": (23, 10), "turnovers": (1.5, 1.2),
         "sacks": (2.5, 1.8), "thirdDownConversion": (0.42, 0.08),
         "redZoneEfficiency": (0.58, 0.12), "timeOfPossession": (30, 4),
+        # Advanced offense
+        "yardsPerPlay": (5.5, 0.7), "redZoneConvRate": (0.58, 0.12),
+        "explosivePlayRate": (0.12, 0.04), "fourthDownConversion": (0.50, 0.15),
+        "penaltyYards": (55, 25),
+        # Defensive / tempo
+        "pressureRate": (0.25, 0.07), "secondsPerPlay": (28.0, 3.0),
+        # EPA
+        "expectedPointsAdded": (0.0, 0.15),
     },
     "nba": {
+        # Basic
         "points": (113, 12), "rebounds": (44, 5),
         "assists": (25, 5), "steals": (7.5, 2),
-        "blocks": (5, 2), "turnovers": (14, 3),
+        "blocks": (5, 2), "turnovers": (14, 3), "personalFouls": (20, 4),
+        # Shooting volume
+        "fieldGoalsMade": (42, 5), "fieldGoalAttempts": (87, 8),
+        "threesMade": (13, 3), "threePointAttempts": (35, 5),
+        "freeThrowsMade": (18, 4), "freeThrowAttempts": (22, 5),
+        # Shooting efficiency
         "fieldGoalPct": (0.47, 0.04), "threePointPct": (0.36, 0.05),
-        "freeThrowPct": (0.78, 0.06), "offensiveRebounds": (10, 3),
-        "defensiveRating": (112, 6), "offensiveRating": (112, 6),
-        "netRating": (0, 6), "pace": (100, 3),
+        "freeThrowPct": (0.78, 0.06), "trueShooting": (0.565, 0.03),
+        "ftRate": (0.26, 0.05), "threePointRate": (0.41, 0.05),
+        # Rebounding
+        "offensiveRebounds": (10, 3), "defensiveRebounds": (34, 4),
+        "drebRate": (0.72, 0.06),
+        # Pace / possession
+        "possessions": (100, 5), "pointsPerPossession": (1.12, 0.08),
+        "pace": (100, 3), "assistRate": (0.25, 0.04),
+        # Ratings
+        "offensiveRating": (112, 6), "defensiveRating": (112, 6),
+        "netRating": (0, 6),
     },
     "mlb": {
+        # Basic
         "runsScored": (4.5, 2.5), "runsAllowed": (4.5, 2.5),
         "hits": (9, 3), "errors": (0.6, 0.8),
         "walks": (3.5, 1.8), "strikeouts": (9, 3),
@@ -182,5 +224,9 @@ _STAT_DISTRIBUTIONS: dict[str, dict[str, tuple[float, float]]] = {
         "battingAvg": (0.255, 0.025), "onBasePct": (0.325, 0.030),
         "sluggingPct": (0.420, 0.045), "ops": (0.745, 0.070),
         "homeRuns": (1.2, 1.0),
+        # Advanced
+        "kBbRatio": (3.0, 0.8), "barrelRate": (0.08, 0.025),
+        "exitVelocity": (88.5, 2.5), "groundBallRate": (0.45, 0.06),
+        "flyBallRate": (0.35, 0.06), "bullpenFatigue": (1.5, 1.0),
     },
 }

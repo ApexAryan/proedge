@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from proedge.pipeline.features.advanced import add_advanced_features
 from proedge.pipeline.features.fatigue import add_fatigue_features
 from proedge.pipeline.features.matchup import add_matchup_features
 from proedge.pipeline.features.rolling import (
@@ -81,12 +82,11 @@ class FeatureStore:
         df = add_over_under_streak(df)
         df = add_season_progress(df)
 
+        # Advanced: pace composites, luck regression, schedule density, situational
+        df = add_advanced_features(df, sport)
+
         # Ratio features from rolling means (raw stats already dropped)
         df = self._add_ratio_features(df, stat_cols)
-
-        # Injury impact placeholders (filled at inference time from live data)
-        df["home_injury_impact"] = 0.0
-        df["away_injury_impact"] = 0.0
 
         # Total line is a direct model input
         if "total_line" not in df.columns:
@@ -96,15 +96,19 @@ class FeatureStore:
 
     def _add_ratio_features(self, df: pd.DataFrame, stat_cols: list[str]) -> pd.DataFrame:
         """Rolling mean differentials and ratios — raw stat cols are already dropped."""
-        df = df.copy()
+        new_cols: dict[str, pd.Series] = {}
         for w in [3, 5, 10]:
             for stat in stat_cols:
                 h_roll = f"home_{stat}_roll{w}_mean"
                 a_roll = f"away_{stat}_roll{w}_mean"
                 if h_roll in df.columns and a_roll in df.columns:
-                    df[f"roll{w}_diff_{stat}"] = df[h_roll] - df[a_roll]
-                    denom = (df[h_roll] + df[a_roll]).replace(0, np.nan)
-                    df[f"roll{w}_ratio_{stat}"] = df[h_roll] / denom
+                    h = df[h_roll]
+                    a = df[a_roll]
+                    new_cols[f"roll{w}_diff_{stat}"] = h - a
+                    denom = (h + a).replace(0, np.nan)
+                    new_cols[f"roll{w}_ratio_{stat}"] = h / denom
+        if new_cols:
+            df = pd.concat([df, pd.DataFrame(new_cols, index=df.index)], axis=1)
         return df
 
     def get_feature_columns(self, df: pd.DataFrame) -> list[str]:
