@@ -54,6 +54,16 @@ class HistoricalLoader:
             logger.info("Loading %s historical data from cache", sport)
             return pd.read_parquet(cache_path)
 
+        if sport == "nba":
+            try:
+                from proedge.pipeline.ingestion.nba_fetcher import fetch_nba_games
+                logger.info("Fetching real NBA game data from NBA stats API...")
+                df = fetch_nba_games()
+                df.to_parquet(cache_path, index=False)
+                return df
+            except Exception as exc:
+                logger.warning("Real NBA fetch failed (%s) — falling back to synthetic", exc)
+
         logger.info("Generating synthetic historical data for %s (%d seasons)", sport, seasons)
         df = self._build_synthetic_dataset(sport, seasons)
         df.to_parquet(cache_path, index=False)

@@ -61,12 +61,18 @@ class FeatureStore:
         home_stats = [f"home_{s}" for s in stat_cols if f"home_{s}" in df.columns]
         away_stats = [f"away_{s}" for s in stat_cols if f"away_{s}" in df.columns]
 
-        # Rolling features for both sides
+        # Rolling features (shift(1) applied inside — no current-game leakage)
         df = add_rolling_features(df, home_stats, team_col="home_team", prefix="")
         df = add_rolling_features(df, away_stats, team_col="away_team", prefix="")
 
-        # Matchup features
+        # Matchup features (also uses shift(1) internally — safe)
         df = add_matchup_features(df, stat_cols)
+
+        # Drop raw per-game stat columns — they contain the current game's outcome
+        # (e.g. home_points == actual score) which leaks the label at training time.
+        # All signal from these columns is already captured in the rolled versions.
+        raw_stat_cols = [c for c in home_stats + away_stats if c in df.columns]
+        df = df.drop(columns=raw_stat_cols, errors="ignore")
 
         # Fatigue / rest / travel
         df = add_fatigue_features(df)
@@ -75,7 +81,7 @@ class FeatureStore:
         df = add_over_under_streak(df)
         df = add_season_progress(df)
 
-        # Derived ratio features
+        # Ratio features from rolling means (raw stats already dropped)
         df = self._add_ratio_features(df, stat_cols)
 
         # Injury impact placeholders (filled at inference time from live data)
@@ -89,23 +95,16 @@ class FeatureStore:
         return df
 
     def _add_ratio_features(self, df: pd.DataFrame, stat_cols: list[str]) -> pd.DataFrame:
-        """Score differentials, efficiency ratios between home and away."""
+        """Rolling mean differentials and ratios — raw stat cols are already dropped."""
         df = df.copy()
-        for stat in stat_cols:
-            h, a = f"home_{stat}", f"away_{stat}"
-            if h in df.columns and a in df.columns:
-                df[f"diff_{stat}"] = df[h] - df[a]
-                denom = (df[h] + df[a]).replace(0, np.nan)
-                df[f"ratio_{stat}"] = df[h] / denom
-
-        # Score differential features from rolling means
         for w in [3, 5, 10]:
-            for stat in stat_cols[:3]:  # top 3 stats only to limit feature explosion
+            for stat in stat_cols:
                 h_roll = f"home_{stat}_roll{w}_mean"
                 a_roll = f"away_{stat}_roll{w}_mean"
                 if h_roll in df.columns and a_roll in df.columns:
                     df[f"roll{w}_diff_{stat}"] = df[h_roll] - df[a_roll]
-
+                    denom = (df[h_roll] + df[a_roll]).replace(0, np.nan)
+                    df[f"roll{w}_ratio_{stat}"] = df[h_roll] / denom
         return df
 
     def get_feature_columns(self, df: pd.DataFrame) -> list[str]:
