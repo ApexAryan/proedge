@@ -1,0 +1,346 @@
+{
+  "title": "ProEdge Analytics — Model Performance",
+  "uid": "proedge-main",
+  "schemaVersion": 38,
+  "version": 2,
+  "refresh": "30s",
+  "time": { "from": "now-7d", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "sport",
+        "type": "custom",
+        "label": "Sport",
+        "options": [
+          { "text": "NBA", "value": "nba", "selected": true },
+          { "text": "NFL", "value": "nfl" },
+          { "text": "MLB", "value": "mlb" }
+        ],
+        "current": { "text": "NBA", "value": "nba" },
+        "hide": 0,
+        "includeAll": false,
+        "multi": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Live Model Accuracy",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "datasource": { "type": "prometheus" },
+        "expr": "max(proedge_model_accuracy{sport=\"$sport\"})",
+        "legendFormat": "Accuracy"
+      }],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "unit": "percentunit"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.55 },
+              { "color": "green", "value": 0.65 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Log Loss",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "datasource": { "type": "prometheus" },
+        "expr": "max(proedge_model_log_loss{sport=\"$sport\"})",
+        "legendFormat": "Log Loss"
+      }],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.65 },
+              { "color": "red", "value": 0.70 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Brier Score",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "datasource": { "type": "prometheus" },
+        "expr": "max(proedge_model_brier_score{sport=\"$sport\"})",
+        "legendFormat": "Brier Score"
+      }],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.25 },
+              { "color": "red", "value": 0.30 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "Total Predictions",
+      "type": "stat",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "datasource": { "type": "prometheus" },
+        "expr": "sum(proedge_predictions_total{sport=\"$sport\"})",
+        "legendFormat": "Predictions"
+      }],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      }
+    },
+    {
+      "id": 4,
+      "title": "API Request Rate",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [{
+        "datasource": { "type": "prometheus" },
+        "expr": "rate(proedge_api_requests_total[5m])",
+        "legendFormat": "{{method}} {{endpoint}} {{status_code}}"
+      }],
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" }
+      }
+    },
+    {
+      "id": 5,
+      "title": "API P95 Latency (ms)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "targets": [{
+        "datasource": { "type": "prometheus" },
+        "expr": "histogram_quantile(0.95, rate(proedge_api_request_duration_seconds_bucket[5m])) * 1000",
+        "legendFormat": "p95 {{endpoint}}"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 150 },
+              { "color": "red", "value": 200 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Prediction Confidence Percentiles",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum(rate(proedge_prediction_confidence_bucket{sport=\"$sport\"}[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "histogram_quantile(0.75, sum(rate(proedge_prediction_confidence_bucket{sport=\"$sport\"}[5m])) by (le))",
+          "legendFormat": "p75"
+        },
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "histogram_quantile(0.90, sum(rate(proedge_prediction_confidence_bucket{sport=\"$sport\"}[5m])) by (le))",
+          "legendFormat": "p90"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit", "min": 0, "max": 1 }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Over Probability Percentiles",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "histogram_quantile(0.25, sum(rate(proedge_prediction_prob_over_bucket{sport=\"$sport\"}[5m])) by (le))",
+          "legendFormat": "p25"
+        },
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum(rate(proedge_prediction_prob_over_bucket{sport=\"$sport\"}[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "histogram_quantile(0.75, sum(rate(proedge_prediction_prob_over_bucket{sport=\"$sport\"}[5m])) by (le))",
+          "legendFormat": "p75"
+        }
+      ],
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit", "min": 0, "max": 1 }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Prediction Direction Split",
+      "type": "piechart",
+      "gridPos": { "x": 0, "y": 20, "w": 8, "h": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "sum(proedge_predictions_total{sport=\"$sport\", direction=\"over\"})",
+          "legendFormat": "Over"
+        },
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "sum(proedge_predictions_total{sport=\"$sport\", direction=\"under\"})",
+          "legendFormat": "Under"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "pieType": "pie",
+        "displayLabels": ["name", "percent"]
+      }
+    },
+    {
+      "id": 9,
+      "title": "Drift PSI — Top Features",
+      "type": "bargauge",
+      "gridPos": { "x": 8, "y": 20, "w": 16, "h": 8 },
+      "targets": [{
+        "datasource": { "type": "prometheus" },
+        "expr": "proedge_drift_psi{sport=\"$sport\"}",
+        "legendFormat": "{{feature}}"
+      }],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "displayMode": "gradient"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.10 },
+              { "color": "red", "value": 0.25 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Model Retrains",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 28, "w": 12, "h": 6 },
+      "targets": [{
+        "datasource": { "type": "prometheus" },
+        "expr": "increase(proedge_model_retrains_total[1d])",
+        "legendFormat": "{{sport}} ({{trigger_reason}})"
+      }],
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Total Predictions (24h)",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 28, "w": 6, "h": 6 },
+      "targets": [{
+        "datasource": { "type": "prometheus" },
+        "expr": "sum(increase(proedge_predictions_total[24h]))",
+        "legendFormat": "Last 24h"
+      }],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      }
+    },
+    {
+      "id": 13,
+      "title": "Predictions by Sport (All Time)",
+      "type": "bargauge",
+      "gridPos": { "x": 18, "y": 28, "w": 6, "h": 6 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "sum(proedge_predictions_total{sport=\"nba\"})",
+          "legendFormat": "NBA"
+        },
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "sum(proedge_predictions_total{sport=\"nfl\"})",
+          "legendFormat": "NFL"
+        },
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "sum(proedge_predictions_total{sport=\"mlb\"})",
+          "legendFormat": "MLB"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "displayMode": "basic"
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      }
+    }
+  ]
+}
