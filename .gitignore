@@ -23,6 +23,7 @@ htmlcov/
 # Data & models (large binaries — not tracked in git)
 data/
 models/
+!src/proedge/pipeline/models/
 
 # IDE
 .vscode/
