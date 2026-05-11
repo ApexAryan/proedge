@@ -200,11 +200,9 @@ def test_inference_features_cover_training_features(trained_model, sample_featur
     The inference feature builder must produce a row that covers every feature
     the model was trained on (no feature silently missing at serve time).
     """
-    import pandas as pd
     from unittest.mock import MagicMock
     from proedge.api.routers.predictions import _build_inference_features
-    from proedge.api.schemas import PredictionRequest, Sport
-    from datetime import datetime, timedelta, timezone
+    from proedge.api.schemas import PredictionRequest
 
     model, feature_cols = trained_model
     registry = ModelRegistry(registry_path=str(tmp_path))

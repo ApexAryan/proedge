@@ -1,5 +1,4 @@
 """Unit tests for the walk-forward backtester."""
-import math
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
