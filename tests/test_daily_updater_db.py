@@ -6,11 +6,9 @@ All database I/O is mocked via SyncSessionLocal — no real Postgres needed.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
-import pytest
 
 from proedge.pipeline.ingestion.daily_updater import DailyUpdater
 from proedge.pipeline.ingestion.injuries import InjuredPlayer
@@ -270,25 +268,6 @@ class TestSettlePredictions:
         pred.predicted_direction = "over"
 
         session = self._session_with_game(total_line=218.5, predictions=[pred])
-        execute_calls = []
-        original_execute = session.execute.side_effect
-
-        # Capture the update(Prediction) call so we can inspect .values()
-        settled_values: dict = {}
-
-        def capture_execute(stmt):
-            if hasattr(stmt, "_values"):
-                # sa_update(...).values(...) — grab is_correct
-                try:
-                    for k, v in stmt._values.items():
-                        settled_values[k.key] = v
-                except Exception:
-                    pass
-            idx = len(execute_calls)
-            execute_calls.append(stmt)
-            results = list(original_execute.__self__.side_effect) if hasattr(original_execute, "__self__") else None
-            return list(session.execute.side_effect)[idx] if hasattr(session.execute, "side_effect") else MagicMock()
-
         with patch("proedge.db.session.SyncSessionLocal", return_value=session):
             result = updater._settle_predictions(_games_df(total=[220], home_score=[112], away_score=[108]))
 
