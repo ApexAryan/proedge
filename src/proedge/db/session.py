@@ -8,12 +8,17 @@ from proedge.config import get_settings
 
 settings = get_settings()
 
+_async_connect_args: dict = {}
+if "flycast" in settings.database_url or "fly.io" in settings.database_url:
+    _async_connect_args = {"ssl": False}
+
 engine = create_async_engine(
     settings.database_url,
     pool_size=10,
     max_overflow=20,
     pool_pre_ping=True,
     echo=False,
+    connect_args=_async_connect_args,
 )
 
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
