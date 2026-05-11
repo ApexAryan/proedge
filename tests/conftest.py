@@ -8,6 +8,12 @@ os.environ.setdefault(
     "DATABASE_URL", "postgresql+asyncpg://proedge:proedge@localhost:5432/proedge_test"
 )
 os.environ.setdefault("MODEL_REGISTRY_PATH", "/tmp/proedge_test_models")
+# Disable API key auth for all tests — force override so CI env doesn't block requests.
+os.environ["API_KEY"] = ""
+
+from proedge.config import get_settings
+
+get_settings.cache_clear()
 
 from proedge.pipeline.ingestion.stats import STAT_KEYS
 
