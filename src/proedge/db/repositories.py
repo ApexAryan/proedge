@@ -77,6 +77,16 @@ class PredictionRepository:
         result = await self.session.execute(q)
         return list(result.scalars().all())
 
+    async def get_recent_with_games(
+        self, sport: str | None = None, limit: int = 50
+    ) -> list[tuple]:
+        q = select(Prediction, Game).join(Game, Prediction.game_id == Game.id)
+        if sport:
+            q = q.where(Prediction.sport == sport)
+        q = q.order_by(Prediction.predicted_at.desc()).limit(limit)
+        result = await self.session.execute(q)
+        return list(result.tuples().all())
+
     async def settle(
         self,
         prediction_id: UUID,

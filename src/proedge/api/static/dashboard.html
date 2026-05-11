@@ -5,85 +5,220 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ProEdge Analytics</title>
 <style>
-  :root {
-    --bg: #0f1117;
-    --card: #1a1d27;
-    --border: #2a2d3e;
-    --accent: #6c63ff;
-    --green: #22c55e;
-    --red: #ef4444;
-    --yellow: #f59e0b;
-    --text: #e2e8f0;
-    --muted: #64748b;
-    --over: #22c55e;
-    --under: #3b82f6;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; }
-  header { background: var(--card); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
-  header h1 { font-size: 18px; font-weight: 700; color: #fff; }
-  header span { font-size: 12px; color: var(--muted); background: var(--border); padding: 2px 8px; border-radius: 12px; }
-  .tabs { display: flex; gap: 4px; padding: 16px 24px 0; border-bottom: 1px solid var(--border); }
-  .tab { padding: 8px 16px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); font-weight: 500; transition: all .15s; }
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .tab:hover { color: var(--text); }
-  main { padding: 24px; max-width: 1400px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
-  .card-title { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 8px; }
-  .card-value { font-size: 28px; font-weight: 700; color: #fff; }
-  .card-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
-  .card-value.green { color: var(--green); }
-  .card-value.red { color: var(--red); }
-  .card-value.yellow { color: var(--yellow); }
-  .section { margin-bottom: 28px; }
-  .section-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-  .badge { font-size: 10px; background: var(--border); color: var(--muted); padding: 2px 6px; border-radius: 4px; }
-  table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--border); }
-  td { padding: 10px 12px; border-bottom: 1px solid #1e2130; font-size: 13px; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #1e2130; }
-  .pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-  .pill.over { background: #14532d; color: var(--over); }
-  .pill.under { background: #1e3a5f; color: var(--under); }
-  .pill.correct { background: #14532d; color: var(--green); }
-  .pill.wrong { background: #450a0a; color: var(--red); }
-  .pill.pending { background: var(--border); color: var(--muted); }
-  .clv-pos { color: var(--green); font-weight: 600; }
-  .clv-neg { color: var(--red); font-weight: 600; }
-  .clv-null { color: var(--muted); }
-  .conf-bar { display: flex; align-items: center; gap: 8px; }
-  .conf-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
-  .conf-fill { height: 100%; border-radius: 2px; background: var(--accent); }
-  .alert-row td:first-child { color: var(--accent); font-weight: 600; }
-  .status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-  .dot-green { background: var(--green); box-shadow: 0 0 6px var(--green); }
-  .dot-yellow { background: var(--yellow); }
-  .dot-red { background: var(--red); }
-  .empty { color: var(--muted); text-align: center; padding: 32px; font-size: 13px; }
-  .refresh-btn { margin-left: auto; font-size: 12px; color: var(--muted); background: var(--border); border: none; padding: 4px 10px; border-radius: 6px; cursor: pointer; }
-  .refresh-btn:hover { color: var(--text); }
-  #sport-filter { background: var(--border); border: none; color: var(--text); padding: 4px 10px; border-radius: 6px; font-size: 12px; margin-left: 8px; }
-  .model-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-  .model-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
-  .model-sport { font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 12px; }
-  .model-sport.nba { color: #c9a227; }
-  .model-sport.nfl { color: #4a9eff; }
-  .model-sport.mlb { color: #e74c3c; }
-  .metric-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); }
-  .metric-row:last-child { border-bottom: none; }
-  .metric-label { color: var(--muted); font-size: 12px; }
-  .metric-val { font-weight: 600; font-size: 13px; }
+:root {
+  --bg: #0c0e18;
+  --card: #13162b;
+  --card2: #1a1d2e;
+  --border: #252840;
+  --border2: #1e2138;
+  --accent: #7c6dfa;
+  --accent2: #a89cff;
+  --green: #22c55e;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --text: #e2e8f0;
+  --muted: #5a6480;
+  --over: #22c55e;
+  --under: #4a9dff;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+
+/* ── Header ── */
+header { background: var(--card); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; }
+header h1 { font-size: 17px; font-weight: 700; color: #fff; }
+.header-tag { font-size: 11px; color: var(--muted); background: var(--border); padding: 2px 8px; border-radius: 12px; }
+.refresh-btn { margin-left: auto; font-size: 12px; color: var(--muted); background: var(--border); border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; transition: color .15s; }
+.refresh-btn:hover { color: var(--text); }
+
+/* ── Tabs ── */
+.tabs { display: flex; gap: 2px; padding: 0 24px; background: var(--card); border-bottom: 1px solid var(--border); }
+.tab { padding: 10px 18px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); font-weight: 500; font-size: 13px; transition: all .15s; white-space: nowrap; }
+.tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
+.tab:hover { color: var(--text); }
+
+/* ── Layout ── */
+main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+
+/* ── Stat cards ── */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+.card-title { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 10px; }
+.card-value { font-size: 26px; font-weight: 700; color: #fff; line-height: 1; }
+.card-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.card-value.green { color: var(--green); }
+.card-value.red { color: var(--red); }
+.card-value.yellow { color: var(--yellow); }
+
+/* ── Section ── */
+.section { margin-bottom: 28px; }
+.section-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+.badge { font-size: 11px; background: var(--border); color: var(--muted); padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+
+/* ── Filter bar ── */
+.filter-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.filter-bar select, .filter-bar input {
+  background: var(--card2); border: 1px solid var(--border); color: var(--text);
+  padding: 5px 10px; border-radius: 7px; font-size: 12px; outline: none;
+}
+.filter-bar select:focus { border-color: var(--accent); }
+
+/* ── Prediction card ── */
+.pred-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; transition: border-color .15s; }
+.pred-card:hover { border-color: var(--border2); }
+.pred-card.expanded { border-color: var(--accent); }
+
+.pred-main { display: grid; grid-template-columns: 2fr 1fr 1fr 1.5fr 1fr 1fr 1fr 36px; align-items: center; padding: 14px 16px; cursor: pointer; gap: 8px; }
+@media (max-width: 900px) { .pred-main { grid-template-columns: 1fr 1fr 1fr; } }
+
+.matchup { display: flex; flex-direction: column; gap: 3px; }
+.matchup-teams { font-weight: 700; font-size: 15px; color: #fff; }
+.matchup-sub { font-size: 11px; color: var(--muted); }
+
+.sport-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; letter-spacing: .05em; }
+.sport-badge.nba { background: #2d1f00; color: #c9a227; }
+.sport-badge.nfl { background: #0d1f3c; color: #4a9dff; }
+.sport-badge.mlb { background: #2d0a0a; color: #e74c3c; }
+
+.line-display { text-align: center; }
+.line-num { font-size: 18px; font-weight: 700; color: #fff; }
+.line-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+
+.direction-pill { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 8px; font-size: 13px; font-weight: 700; }
+.direction-pill.over { background: rgba(34,197,94,.15); color: var(--over); border: 1px solid rgba(34,197,94,.25); }
+.direction-pill.under { background: rgba(74,157,255,.15); color: var(--under); border: 1px solid rgba(74,157,255,.25); }
+
+/* Probability bar */
+.prob-display { display: flex; flex-direction: column; gap: 4px; }
+.prob-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.prob-track { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.prob-fill-over { height: 100%; border-radius: 3px; background: var(--over); }
+.prob-fill-under { height: 100%; border-radius: 3px; background: var(--under); }
+.prob-val { font-weight: 600; width: 36px; text-align: right; font-size: 12px; }
+
+/* Confidence */
+.conf-cell { display: flex; flex-direction: column; gap: 3px; align-items: center; }
+.conf-tier { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 2px 6px; border-radius: 4px; }
+.conf-tier.weak { background: rgba(100,116,128,.15); color: var(--muted); }
+.conf-tier.moderate { background: rgba(245,158,11,.12); color: var(--yellow); }
+.conf-tier.strong { background: rgba(34,197,94,.12); color: var(--green); }
+.conf-tier.very-strong { background: rgba(34,197,94,.2); color: #4ade80; }
+.conf-num { font-size: 18px; font-weight: 700; color: #fff; }
+
+/* Result */
+.pill { display: inline-block; padding: 3px 9px; border-radius: 5px; font-size: 11px; font-weight: 700; }
+.pill.correct { background: rgba(34,197,94,.15); color: var(--green); }
+.pill.wrong { background: rgba(239,68,68,.15); color: var(--red); }
+.pill.pending { background: var(--border); color: var(--muted); }
+.pill.over { background: rgba(34,197,94,.15); color: var(--over); }
+.pill.under { background: rgba(74,157,255,.15); color: var(--under); }
+
+.clv-pos { color: var(--green); font-weight: 600; }
+.clv-neg { color: var(--red); font-weight: 600; }
+
+.expand-btn { width: 28px; height: 28px; border-radius: 6px; background: var(--border); border: none; color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0; }
+.expand-btn:hover { background: var(--accent); color: #fff; }
+.expand-btn svg { transition: transform .2s; }
+.expanded .expand-btn svg { transform: rotate(180deg); }
+
+/* ── Expand detail panel ── */
+.pred-detail { display: none; border-top: 1px solid var(--border); background: var(--card2); padding: 20px; }
+.pred-detail.open { display: block; }
+
+.detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+
+.detail-section { }
+.detail-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 12px; font-weight: 600; }
+
+/* Probability arc gauge */
+.gauge-wrap { display: flex; flex-direction: column; align-items: center; }
+.gauge-svg { width: 180px; height: 100px; }
+.gauge-pct { font-size: 13px; font-weight: 700; margin-top: 4px; }
+.gauge-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.gauge-ci { font-size: 11px; color: var(--muted); margin-top: 6px; text-align: center; }
+
+/* Factor bars */
+.factor-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.factor-name { font-size: 11px; color: var(--text); width: 180px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.factor-track { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.factor-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+.factor-val { font-size: 11px; color: var(--muted); width: 36px; text-align: right; flex-shrink: 0; }
+
+/* Lines comparison */
+.lines-grid { display: flex; flex-direction: column; gap: 8px; }
+.line-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--card); border-radius: 8px; border: 1px solid var(--border); }
+.line-source { display: flex; align-items: center; gap: 8px; }
+.source-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.source-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.source-desc { font-size: 11px; color: var(--muted); }
+.line-value { font-size: 16px; font-weight: 700; color: #fff; }
+.line-value.null { color: var(--muted); font-size: 13px; }
+.discrepancy { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+.disc-pos { background: rgba(34,197,94,.12); color: var(--green); }
+.disc-neg { background: rgba(239,68,68,.12); color: var(--red); }
+
+/* Model context */
+.model-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.meta-item { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.meta-key { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+.meta-val { font-size: 14px; font-weight: 600; color: #fff; }
+
+/* Settle form */
+.settle-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-top: 10px; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group label { font-size: 11px; color: var(--muted); }
+.form-group input { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 7px 10px; border-radius: 7px; font-size: 13px; width: 120px; outline: none; }
+.form-group input:focus { border-color: var(--accent); }
+.btn-settle { background: var(--accent); color: #fff; border: none; padding: 8px 16px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-settle:hover { background: var(--accent2); }
+.settle-result { font-size: 12px; margin-top: 8px; padding: 8px 12px; border-radius: 7px; }
+.settle-result.ok { background: rgba(34,197,94,.12); color: var(--green); }
+.settle-result.err { background: rgba(239,68,68,.12); color: var(--red); }
+
+/* ── Alert table ── */
+.alert-table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 10px 14px; border-bottom: 1px solid var(--border); font-weight: 600; }
+td { padding: 11px 14px; border-bottom: 1px solid var(--border2); font-size: 13px; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,.02); }
+
+/* ── Model cards ── */
+.model-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.model-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+.model-sport { font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 14px; }
+.model-sport.nba { color: #c9a227; }
+.model-sport.nfl { color: #4a9dff; }
+.model-sport.mlb { color: #e74c3c; }
+.metric-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border2); }
+.metric-row:last-child { border-bottom: none; }
+.metric-label { color: var(--muted); font-size: 12px; }
+.metric-val { font-weight: 600; font-size: 13px; }
+
+/* ── Training status ── */
+.status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+.dot-green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.dot-yellow { background: var(--yellow); }
+.dot-red { background: var(--red); }
+
+.empty { color: var(--muted); text-align: center; padding: 32px; font-size: 13px; }
+.loading { color: var(--muted); text-align: center; padding: 24px; font-size: 13px; }
+
+/* Spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; display: inline-block; vertical-align: middle; margin-right: 6px; }
 </style>
 </head>
 <body>
 
 <header>
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 3v18h18" stroke="#6c63ff" stroke-width="2" stroke-linecap="round"/><path d="M7 16l4-4 4 4 4-7" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+    <path d="M3 3v18h18" stroke="#7c6dfa" stroke-width="2" stroke-linecap="round"/>
+    <path d="M7 16l4-4 4 4 4-7" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
   <h1>ProEdge Analytics</h1>
-  <span id="last-updated">Loading…</span>
-  <button class="refresh-btn" onclick="loadAll()">Refresh</button>
+  <span class="header-tag" id="last-updated">Loading…</span>
+  <button class="refresh-btn" onclick="loadAll()">↺ Refresh</button>
 </header>
 
 <div class="tabs">
@@ -95,61 +230,62 @@
 
 <main>
 
-<!-- OVERVIEW TAB -->
+<!-- OVERVIEW -->
 <div id="tab-overview">
   <div class="grid" id="overview-stats">
     <div class="card"><div class="card-title">Total Predictions</div><div class="card-value" id="stat-total">—</div><div class="card-sub">all sports</div></div>
-    <div class="card"><div class="card-title">Settled / Correct</div><div class="card-value" id="stat-accuracy">—</div><div class="card-sub" id="stat-accuracy-sub">resolved predictions</div></div>
-    <div class="card"><div class="card-title">Avg CLV</div><div class="card-value" id="stat-clv">—</div><div class="card-sub">settled predictions</div></div>
-    <div class="card"><div class="card-title">Active Alerts</div><div class="card-value" id="stat-alerts">—</div><div class="card-sub">≥ confidence threshold</div></div>
+    <div class="card"><div class="card-title">Settled Accuracy</div><div class="card-value" id="stat-accuracy">—</div><div class="card-sub" id="stat-accuracy-sub">resolved bets</div></div>
+    <div class="card"><div class="card-title">Avg CLV</div><div class="card-value" id="stat-clv">—</div><div class="card-sub">closing line value</div></div>
+    <div class="card"><div class="card-title">Active Alerts</div><div class="card-value" id="stat-alerts">—</div><div class="card-sub">high-confidence picks</div></div>
   </div>
   <div class="section">
-    <div class="section-title">Training Status</div>
+    <div class="section-title">Training &amp; Data Status</div>
     <div id="training-status-cards" class="model-grid"></div>
   </div>
 </div>
 
-<!-- PREDICTIONS TAB -->
+<!-- PREDICTIONS -->
 <div id="tab-predictions" style="display:none">
-  <div class="section">
-    <div class="section-title">
-      Recent Predictions
-      <select id="sport-filter" onchange="loadPredictions()">
-        <option value="">All Sports</option>
-        <option value="nba">NBA</option>
-        <option value="nfl">NFL</option>
-        <option value="mlb">MLB</option>
-      </select>
-      <span class="badge" id="pred-count">0</span>
-    </div>
-    <div class="card" style="padding:0;overflow:hidden">
-      <table>
-        <thead><tr>
-          <th>Game</th><th>Sport</th><th>Direction</th><th>Confidence</th>
-          <th>Prob Over</th><th>Result</th><th>CLV</th><th>Time</th>
-        </tr></thead>
-        <tbody id="pred-table-body"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
-      </table>
-    </div>
+  <div class="filter-bar">
+    <select id="sport-filter" onchange="loadPredictions()">
+      <option value="">All Sports</option>
+      <option value="nba">NBA</option>
+      <option value="nfl">NFL</option>
+      <option value="mlb">MLB</option>
+    </select>
+    <select id="dir-filter" onchange="loadPredictions()">
+      <option value="">All Directions</option>
+      <option value="over">Over</option>
+      <option value="under">Under</option>
+    </select>
+    <select id="conf-filter" onchange="loadPredictions()">
+      <option value="">All Confidence</option>
+      <option value="strong">Strong (30%+)</option>
+      <option value="moderate">Moderate (15–30%)</option>
+      <option value="weak">Weak (&lt;15%)</option>
+    </select>
+    <span class="badge" id="pred-count">0</span>
+    <span style="color:var(--muted);font-size:11px;margin-left:4px">Click any row to expand</span>
   </div>
+  <div id="pred-list"><div class="loading"><span class="spinner"></span>Loading…</div></div>
 </div>
 
-<!-- ALERTS TAB -->
+<!-- ALERTS -->
 <div id="tab-alerts" style="display:none">
   <div class="section">
     <div class="section-title">High-Confidence Alerts <span class="badge" id="alert-count">0</span></div>
-    <div class="card" style="padding:0;overflow:hidden">
+    <div class="alert-table-wrap">
       <table>
         <thead><tr>
-          <th>Sport</th><th>Matchup</th><th>Pick</th><th>Confidence</th><th>Edge</th><th>Game Date</th><th>Fired</th>
+          <th>Sport</th><th>Matchup</th><th>Pick</th><th>Confidence</th><th>Edge</th><th>Game Date</th><th>Status</th>
         </tr></thead>
-        <tbody id="alert-table-body"><tr><td colspan="7" class="empty">No alerts yet</td></tr></tbody>
+        <tbody id="alert-table-body"><tr><td colspan="7" class="empty">No high-confidence alerts yet</td></tr></tbody>
       </table>
     </div>
   </div>
 </div>
 
-<!-- MODELS TAB -->
+<!-- MODELS -->
 <div id="tab-models" style="display:none">
   <div class="section">
     <div class="section-title">Active Model Performance</div>
@@ -160,48 +296,417 @@
 </main>
 
 <script>
-const API = '';  // relative — same origin
+const API = '';
+const API_KEY = '';
+const _featImportanceCache = {};
+const _linesCache = {};
+let _allPreds = [];
+
+async function fetchJSON(path) {
+  try {
+    const r = await fetch(API + path, { headers: { 'X-API-Key': API_KEY } });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+function fmt(v, d=1) { return v == null ? '—' : Number(v).toFixed(d); }
+
+function timeAgo(iso) {
+  if (!iso) return '—';
+  const diff = (Date.now() - new Date(iso)) / 1000;
+  if (diff < 60) return `${Math.round(diff)}s ago`;
+  if (diff < 3600) return `${Math.round(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.round(diff/3600)}h ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+
+function confTier(c) {
+  if (c >= .40) return { label: 'Very Strong', cls: 'very-strong' };
+  if (c >= .30) return { label: 'Strong', cls: 'strong' };
+  if (c >= .15) return { label: 'Moderate', cls: 'moderate' };
+  return { label: 'Weak', cls: 'weak' };
+}
+
+function confExplain(c, dir, probOver, probUnder) {
+  const dist = Math.abs(probOver - 0.5);
+  const favored = dir === 'over' ? probOver : probUnder;
+  const pct = (favored * 100).toFixed(1);
+  if (c < .15) return `The model is only ${pct}% confident the total goes ${dir} — just ${(dist*100).toFixed(1)} percentage points from a coin flip. This is a mild lean, not a strong signal.`;
+  if (c < .30) return `The model gives ${pct}% probability of ${dir} — a moderate lean. Worth watching but not high-conviction.`;
+  if (c < .40) return `The model is ${pct}% confident the total goes ${dir}. This is a strong signal relative to the historical base rate.`;
+  return `Very high conviction: ${pct}% probability of ${dir}. The model's inputs are clearly skewed in one direction.`;
+}
+
+// Human-readable feature name mapping
+function friendlyFeature(name) {
+  const map = {
+    total_line: 'Posted total line (o/u)',
+    home_advantage: 'Home court advantage',
+    home_rest_days: 'Home rest days', away_rest_days: 'Away rest days',
+    home_back_to_back: 'Home back-to-back', away_back_to_back: 'Away back-to-back',
+    home_rest_advantage: 'Rest day advantage (home − away)',
+    wind_speed_mph: 'Wind speed (MPH)', temperature_f: 'Temperature (°F)',
+    is_dome: 'Indoor/dome game', altitude_feet: 'Stadium altitude',
+    is_playoff: 'Playoff game', altitude_boost: 'Altitude scoring boost',
+    line_movement: 'Line movement (open→close)',
+    public_over_pct: 'Public betting % (over)',
+    sharp_over_pct: 'Sharp money % (over)',
+    sharp_vs_public: 'Sharp vs public disagreement',
+    line_move_magnitude: 'Line move size',
+    ref_foul_rate: 'Ref foul rate vs avg', ump_walk_rate: 'Ump walk rate vs avg',
+    home_key_players_out: 'Home key players out',
+    away_key_players_out: 'Away key players out',
+    injury_pts_impact: 'Injury scoring impact',
+    h2h_over_rate: 'Head-to-head over rate',
+    h2h_avg_total: 'Head-to-head avg total',
+    home_over_streak: 'Home over/under streak',
+    away_over_streak: 'Away over/under streak',
+    season_progress: 'Season progress (0–1)',
+  };
+  if (map[name]) return map[name];
+  // Auto-format: home_pointsScored_roll10_mean → Home 10-game scoring avg
+  return name
+    .replace(/^home_/, 'Home ')
+    .replace(/^away_/, 'Away ')
+    .replace(/_roll(\d+)_mean$/, ' $1-game avg')
+    .replace(/_roll(\d+)_std$/, ' $1-game volatility')
+    .replace(/pointsScored/, 'scoring')
+    .replace(/pointsAllowed/, 'defense')
+    .replace(/_/g, ' ');
+}
+
+// SVG arc probability gauge
+function probGaugeSVG(probOver, probUnder, dir) {
+  const W = 180, H = 100, cx = 90, cy = 92, r = 76;
+  // Arc from 180° (left=0% over) to 0° (right=100% over)
+  const toRad = deg => deg * Math.PI / 180;
+  const arcPt = (deg) => {
+    const a = toRad(180 - deg * 180); // map 0–1 to 180°–0°
+    return [cx + r * Math.cos(a), cy - r * Math.sin(a)];
+  };
+  const arcPath = (pct, color, width=8) => {
+    if (pct <= 0) return '';
+    if (pct >= 1) pct = 0.9999;
+    const [sx, sy] = arcPt(0);
+    const [ex, ey] = arcPt(pct);
+    const large = pct > 0.5 ? 1 : 0;
+    return `<path d="M${sx},${sy} A${r},${r} 0 ${large} 1 ${ex},${ey}" stroke="${color}" stroke-width="${width}" fill="none" stroke-linecap="round"/>`;
+  };
+
+  const [mx, my] = arcPt(0.5); // 50% mark
+
+  return `<svg class="gauge-svg" viewBox="0 0 ${W} ${H}">
+    <!-- Background arc -->
+    ${arcPath(1, 'var(--border)', 8)}
+    <!-- Under arc (left of 50%) -->
+    ${probUnder > 0.5 ? arcPath(probUnder, 'var(--under)', 8) : ''}
+    <!-- Over arc (right portion) — we draw from right -->
+    ${probOver > 0.5 ? `<path d="M${arcPt(1)[0]},${arcPt(1)[1]} A${r},${r} 0 ${probOver>0.5?1:0} 0 ${arcPt(1-probOver)[0]},${arcPt(1-probOver)[1]}" stroke="var(--over)" stroke-width="8" fill="none" stroke-linecap="round"/>` : ''}
+    <!-- 50% center marker -->
+    <line x1="${mx}" y1="${my-14}" x2="${mx}" y2="${my+2}" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="3,2"/>
+    <text x="${mx}" y="${my-18}" text-anchor="middle" fill="var(--muted)" font-size="9">50%</text>
+    <!-- Under label -->
+    <text x="6" y="${H-4}" fill="var(--under)" font-size="10" font-weight="700">UNDER</text>
+    <text x="6" y="${H-16}" fill="var(--under)" font-size="12" font-weight="800">${(probUnder*100).toFixed(1)}%</text>
+    <!-- Over label -->
+    <text x="${W-6}" y="${H-4}" text-anchor="end" fill="var(--over)" font-size="10" font-weight="700">OVER</text>
+    <text x="${W-6}" y="${H-16}" text-anchor="end" fill="var(--over)" font-size="12" font-weight="800">${(probOver*100).toFixed(1)}%</text>
+  </svg>`;
+}
+
+function renderPredCard(p) {
+  const dir = p.predicted_direction;
+  const tier = confTier(p.confidence);
+  const confPct = Math.round((p.confidence||0)*100);
+  const sportBadge = `<span class="sport-badge ${p.sport}">${(p.sport||'').toUpperCase()}</span>`;
+  const homeTeam = p.home_team || '—';
+  const awayTeam = p.away_team || '—';
+  const line = p.total_line ? p.total_line.toFixed(1) : '—';
+  const gameDate = fmtDate(p.game_date);
+  const result = p.is_correct == null
+    ? '<span class="pill pending">Pending</span>'
+    : p.is_correct
+      ? '<span class="pill correct">✓ Win</span>'
+      : '<span class="pill wrong">✗ Loss</span>';
+  const clvStr = p.clv != null
+    ? `<span class="${p.clv>=0?'clv-pos':'clv-neg'}">${p.clv>=0?'+':''}${p.clv.toFixed(1)}</span>`
+    : '<span style="color:var(--muted)">—</span>';
+  const pid = p.prediction_id;
+
+  return `<div class="pred-card" id="card-${pid}">
+    <div class="pred-main" onclick="toggleExpand('${pid}', ${JSON.stringify(p).replace(/"/g,'&quot;')})">
+      <div class="matchup">
+        <div class="matchup-teams">${homeTeam} <span style="color:var(--muted);font-weight:400">vs</span> ${awayTeam}</div>
+        <div class="matchup-sub">${sportBadge} &nbsp;${gameDate}</div>
+      </div>
+      <div class="line-display">
+        <div class="line-num">${line}</div>
+        <div class="line-label">Total Line</div>
+      </div>
+      <div><span class="direction-pill ${dir}">${dir === 'over' ? '▲' : '▼'} ${dir.toUpperCase()}</span></div>
+      <div class="prob-display">
+        <div class="prob-row" style="color:var(--over)">
+          <span style="font-size:10px;width:36px">OVER</span>
+          <div class="prob-track"><div class="prob-fill-over" style="width:${(p.prob_over*100).toFixed(1)}%"></div></div>
+          <span class="prob-val" style="color:var(--over)">${(p.prob_over*100).toFixed(1)}%</span>
+        </div>
+        <div class="prob-row" style="color:var(--under)">
+          <span style="font-size:10px;width:36px">UNDR</span>
+          <div class="prob-track"><div class="prob-fill-under" style="width:${(p.prob_under*100).toFixed(1)}%"></div></div>
+          <span class="prob-val" style="color:var(--under)">${(p.prob_under*100).toFixed(1)}%</span>
+        </div>
+      </div>
+      <div class="conf-cell">
+        <span class="conf-tier ${tier.cls}">${tier.label}</span>
+        <span class="conf-num">${confPct}%</span>
+      </div>
+      <div>${result} ${clvStr !== '' ? '<br><small>'+clvStr+'</small>' : ''}</div>
+      <div style="color:var(--muted);font-size:12px">${timeAgo(p.predicted_at)}</div>
+      <button class="expand-btn" title="Expand"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+    <div class="pred-detail" id="detail-${pid}">
+      <div class="loading"><span class="spinner"></span>Loading analysis…</div>
+    </div>
+  </div>`;
+}
+
+async function toggleExpand(pid, pData) {
+  const card = document.getElementById('card-' + pid);
+  const detail = document.getElementById('detail-' + pid);
+  const isOpen = detail.classList.contains('open');
+  if (isOpen) {
+    detail.classList.remove('open');
+    card.classList.remove('expanded');
+    return;
+  }
+  card.classList.add('expanded');
+  detail.classList.add('open');
+  if (detail.dataset.loaded) return;
+  detail.dataset.loaded = '1';
+
+  const p = pData;
+  const sport = p.sport;
+  const home = p.home_team;
+  const away = p.away_team;
+
+  // Fetch feature importance and lines comparison in parallel
+  const [featImp, lines] = await Promise.all([
+    fetchFeatImportance(sport),
+    fetchLines(sport, home, away),
+  ]);
+
+  detail.innerHTML = renderDetail(p, featImp, lines);
+}
+
+async function fetchFeatImportance(sport) {
+  if (_featImportanceCache[sport]) return _featImportanceCache[sport];
+  const data = await fetchJSON(`/models/feature-importance/${sport}`);
+  if (data) _featImportanceCache[sport] = data;
+  return data;
+}
+
+async function fetchLines(sport, home, away) {
+  const key = `${sport}|${home}|${away}`;
+  if (_linesCache[key] !== undefined) return _linesCache[key];
+  const data = await fetchJSON(`/lines/compare/${sport}/${encodeURIComponent(home)}/${encodeURIComponent(away)}`);
+  _linesCache[key] = data;
+  return data;
+}
+
+function renderDetail(p, featImp, lines) {
+  const dir = p.predicted_direction;
+  const tier = confTier(p.confidence);
+  const ciSpread = ((p.ci_upper - p.ci_lower) * 100).toFixed(1);
+
+  // Section 1: Probability gauge + explanation
+  const gaugeHtml = `
+    <div class="detail-section">
+      <div class="detail-label">Prediction Analysis</div>
+      <div class="gauge-wrap">
+        ${probGaugeSVG(p.prob_over, p.prob_under, dir)}
+        <div class="gauge-ci">
+          Model agreement range: ${(p.ci_lower*100).toFixed(1)}% – ${(p.ci_upper*100).toFixed(1)}% over
+          &nbsp;(±${(ciSpread/2).toFixed(1)}pp spread)
+        </div>
+      </div>
+      <div style="margin-top:14px;padding:12px;background:var(--card);border-radius:8px;border:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span class="conf-tier ${tier.cls}">${tier.label} signal</span>
+          <span style="font-size:12px;color:var(--muted)">${Math.round(p.confidence*100)}% confidence</span>
+        </div>
+        <div style="font-size:12px;color:var(--text);line-height:1.6">${confExplain(p.confidence, dir, p.prob_over, p.prob_under)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">
+          The CI spread (±${(ciSpread/2).toFixed(1)}pp) shows ${parseFloat(ciSpread) < 2 ? 'XGBoost and LightGBM agree closely — consistent ensemble.' : 'some divergence between XGBoost and LightGBM — treat with more caution.'}
+        </div>
+      </div>
+    </div>`;
+
+  // Section 2: Market lines comparison
+  const bookLine = lines?.book_line;
+  const ppLine = lines?.prizepicks_line;
+  const kalshiLine = lines?.kalshi_line;
+  const postedLine = p.total_line;
+  const linesHtml = `
+    <div class="detail-section">
+      <div class="detail-label">Line Sources</div>
+      <div class="lines-grid">
+        <div class="line-row">
+          <div class="line-source">
+            <div class="source-dot" style="background:#7c6dfa"></div>
+            <div><div class="source-name">Model Input</div><div class="source-desc">Line used for prediction</div></div>
+          </div>
+          <div class="line-value">${postedLine ? postedLine.toFixed(1) : '—'}</div>
+        </div>
+        <div class="line-row">
+          <div class="line-source">
+            <div class="source-dot" style="background:#22c55e"></div>
+            <div><div class="source-name">Sportsbooks</div><div class="source-desc">Consensus across books</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${bookLine ? `<div class="line-value">${bookLine.toFixed(1)}</div>` : '<div class="line-value null">Not set</div>'}
+          </div>
+        </div>
+        <div class="line-row">
+          <div class="line-source">
+            <div class="source-dot" style="background:#f59e0b"></div>
+            <div><div class="source-name">Kalshi Market</div><div class="source-desc">Prediction market implied</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${kalshiLine ? `<div class="line-value">${kalshiLine.toFixed(1)}</div>
+              ${lines.kalshi_nearest_prob ? `<span style="font-size:11px;color:var(--muted)">${(lines.kalshi_nearest_prob*100).toFixed(0)}% over @${lines.kalshi_nearest_threshold}</span>` : ''}
+              ${lines.kalshi_vs_book != null ? `<span class="discrepancy ${lines.kalshi_vs_book>=0?'disc-pos':'disc-neg'}">${lines.kalshi_vs_book>=0?'+':''}${lines.kalshi_vs_book.toFixed(1)}</span>` : ''}`
+            : '<div class="line-value null">No market yet</div>'}
+          </div>
+        </div>
+        <div class="line-row">
+          <div class="line-source">
+            <div class="source-dot" style="background:#4a9dff"></div>
+            <div><div class="source-name">PrizePicks</div><div class="source-desc">DFS projected total</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${ppLine ? `<div class="line-value">${ppLine.toFixed(1)}</div>
+              ${lines.pp_vs_book != null ? `<span class="discrepancy ${lines.pp_vs_book>=0?'disc-pos':'disc-neg'}">${lines.pp_vs_book>=0?'+':''}${lines.pp_vs_book.toFixed(1)}</span>` : ''}`
+            : '<div class="line-value null">Not posted</div>'}
+          </div>
+        </div>
+      </div>
+      ${kalshiLine && bookLine ? `<div style="margin-top:10px;font-size:11px;color:var(--muted);padding:8px 10px;background:var(--card);border-radius:6px;border:1px solid var(--border)">
+        Kalshi is ${Math.abs(lines.kalshi_vs_book).toFixed(1)} pts ${lines.kalshi_vs_book > 0 ? 'above' : 'below'} the books.
+        ${Math.abs(lines.kalshi_vs_book) > 1.5 ? ' <strong style="color:var(--yellow)">Notable discrepancy</strong> — the prediction market disagrees with bookmakers.' : ' Markets are broadly aligned.'}
+      </div>` : ''}
+    </div>`;
+
+  // Section 3: Top features
+  let featHtml = '';
+  if (featImp && featImp.top_features) {
+    const ensemble = featImp.top_features.ensemble || {};
+    const keys = Object.keys(ensemble);
+    const vals = keys.map(k => ensemble[k]);
+    const maxVal = Math.max(...vals);
+    featHtml = `
+      <div class="detail-section">
+        <div class="detail-label">What the model weighs most (${(p.sport||'').toUpperCase()})</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+          These are the features with the highest importance in the trained ${(p.sport||'').toUpperCase()} ensemble — not per-prediction values, but what the model has learned matters most historically.
+        </div>
+        ${keys.slice(0, 12).map((k, i) => `
+          <div class="factor-row">
+            <div class="factor-name" title="${k}">${friendlyFeature(k)}</div>
+            <div class="factor-track"><div class="factor-fill" style="width:${(vals[i]/maxVal*100).toFixed(1)}%"></div></div>
+            <div class="factor-val">${vals[i].toFixed(0)}</div>
+          </div>`).join('')}
+      </div>`;
+  } else {
+    featHtml = `
+      <div class="detail-section">
+        <div class="detail-label">Model Factors</div>
+        <div style="font-size:12px;color:var(--muted)">Feature importance unavailable — model may still be loading.</div>
+      </div>`;
+  }
+
+  // Section 4: Model context + settle
+  const settleHtml = p.is_correct == null ? `
+    <div class="detail-section" style="grid-column: 1 / -1">
+      <div class="detail-label">Model Info &amp; Settle</div>
+      <div class="model-meta" style="margin-bottom:14px">
+        <div class="meta-item"><div class="meta-key">Model Version</div><div class="meta-val" style="font-size:12px">${p.model_version || '—'}</div></div>
+        <div class="meta-item"><div class="meta-key">Predicted At</div><div class="meta-val" style="font-size:12px">${timeAgo(p.predicted_at)}</div></div>
+        <div class="meta-item"><div class="meta-key">Sport</div><div class="meta-val">${(p.sport||'').toUpperCase()}</div></div>
+        <div class="meta-item"><div class="meta-key">Game Date</div><div class="meta-val" style="font-size:12px">${fmtDate(p.game_date)}</div></div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Enter the final score to settle this prediction and compute CLV:</div>
+      <div class="settle-form">
+        <div class="form-group">
+          <label>Actual Combined Total</label>
+          <input type="number" step="0.5" id="settle-total-${p.prediction_id}" placeholder="e.g. 221">
+        </div>
+        <div class="form-group">
+          <label>Closing Line</label>
+          <input type="number" step="0.5" id="settle-line-${p.prediction_id}" placeholder="${p.total_line || 'e.g. 228.5'}">
+        </div>
+        <button class="btn-settle" onclick="settlePred('${p.prediction_id}')">Settle</button>
+      </div>
+      <div id="settle-msg-${p.prediction_id}"></div>
+    </div>` : `
+    <div class="detail-section" style="grid-column: 1 / -1">
+      <div class="detail-label">Model Info</div>
+      <div class="model-meta">
+        <div class="meta-item"><div class="meta-key">Model Version</div><div class="meta-val" style="font-size:12px">${p.model_version || '—'}</div></div>
+        <div class="meta-item"><div class="meta-key">Result</div><div class="meta-val">${p.is_correct ? '✓ Correct' : '✗ Wrong'}</div></div>
+        <div class="meta-item"><div class="meta-key">Actual Total</div><div class="meta-val">${p.actual_total ?? '—'}</div></div>
+        <div class="meta-item"><div class="meta-key">CLV</div><div class="meta-val ${p.clv>=0?'':''}${p.clv!=null?p.clv>=0?'clv-pos':'clv-neg':''}">${p.clv!=null?(p.clv>=0?'+':'')+p.clv.toFixed(2):'—'}</div></div>
+      </div>
+    </div>`;
+
+  return `<div class="detail-grid">
+    ${gaugeHtml}
+    ${linesHtml}
+    ${featHtml}
+    ${settleHtml}
+  </div>`;
+}
+
+async function settlePred(pid) {
+  const totalEl = document.getElementById('settle-total-' + pid);
+  const lineEl = document.getElementById('settle-line-' + pid);
+  const msgEl = document.getElementById('settle-msg-' + pid);
+  const total = parseFloat(totalEl.value);
+  const line = parseFloat(lineEl.value);
+  if (isNaN(total) || isNaN(line)) { msgEl.innerHTML = '<div class="settle-result err">Enter both values.</div>'; return; }
+  msgEl.innerHTML = '<div class="settle-result"><span class="spinner"></span>Settling…</div>';
+  const r = await fetch(`${API}/predictions/${pid}/settle`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
+    body: JSON.stringify({ actual_total: total, closing_line: line }),
+  });
+  if (r.ok) {
+    const data = await r.json();
+    msgEl.innerHTML = `<div class="settle-result ok">${data.message}</div>`;
+    loadPredictions();
+  } else {
+    msgEl.innerHTML = `<div class="settle-result err">Error settling — check values.</div>`;
+  }
+}
 
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach((t, i) => {
-    const names = ['overview','predictions','alerts','models'];
-    t.classList.toggle('active', names[i] === name);
+    t.classList.toggle('active', ['overview','predictions','alerts','models'][i] === name);
   });
   ['overview','predictions','alerts','models'].forEach(n => {
-    document.getElementById(`tab-${n}`).style.display = n === name ? '' : 'none';
+    document.getElementById('tab-' + n).style.display = n === name ? '' : 'none';
   });
   if (name === 'predictions') loadPredictions();
   if (name === 'alerts') loadAlerts();
   if (name === 'models') loadModels();
 }
 
-async function fetchJSON(path) {
-  try {
-    const r = await fetch(API + path, {
-      headers: { 'X-API-Key': 'NocmCzj62LHRIwuK8LdeZb_AV2TcandimUn82TanFhU' }
-    });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch { return null; }
-}
-
-function fmt(v, digits=1) {
-  if (v == null) return '—';
-  return Number(v).toFixed(digits);
-}
-
-function timeAgo(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  const diff = (Date.now() - d) / 1000;
-  if (diff < 60) return `${Math.round(diff)}s ago`;
-  if (diff < 3600) return `${Math.round(diff/60)}m ago`;
-  if (diff < 86400) return `${Math.round(diff/3600)}h ago`;
-  return d.toLocaleDateString();
-}
-
 async function loadOverview() {
-  // Training status
   const status = await fetchJSON('/training/status');
   const container = document.getElementById('training-status-cards');
   if (status) {
@@ -211,12 +716,9 @@ async function loadOverview() {
         <div class="metric-row"><span class="metric-label">Last Update</span><span class="metric-val">${s.last_update_date || '—'}</span></div>
         <div class="metric-row"><span class="metric-label">Games Added</span><span class="metric-val">${s.last_update_games_added ?? '—'}</span></div>
         <div class="metric-row"><span class="metric-label">Model Version</span><span class="metric-val" style="font-size:11px">${s.last_retrain_version || '—'}</span></div>
-        <div class="metric-row"><span class="metric-label">Total Games</span><span class="metric-val">${s.total_historical_games ?? '—'}</span></div>
-      </div>
-    `).join('');
+        <div class="metric-row"><span class="metric-label">Historical Games</span><span class="metric-val">${s.total_historical_games?.toLocaleString() ?? '—'}</span></div>
+      </div>`).join('');
   }
-
-  // Predictions summary
   const preds = await fetchJSON('/predictions/recent?limit=200');
   if (preds) {
     document.getElementById('stat-total').textContent = preds.length;
@@ -224,56 +726,41 @@ async function loadOverview() {
     const correct = settled.filter(p => p.is_correct).length;
     if (settled.length > 0) {
       const acc = (correct / settled.length * 100).toFixed(1);
-      document.getElementById('stat-accuracy').textContent = `${acc}%`;
-      document.getElementById('stat-accuracy').className = `card-value ${parseFloat(acc) >= 52 ? 'green' : 'yellow'}`;
+      document.getElementById('stat-accuracy').textContent = acc + '%';
+      document.getElementById('stat-accuracy').className = 'card-value ' + (parseFloat(acc) >= 52 ? 'green' : 'yellow');
       document.getElementById('stat-accuracy-sub').textContent = `${correct}/${settled.length} settled`;
     }
     const clvs = preds.filter(p => p.clv != null).map(p => p.clv);
     if (clvs.length > 0) {
       const avg = clvs.reduce((a,b)=>a+b,0)/clvs.length;
-      document.getElementById('stat-clv').textContent = (avg>=0?'+':'')+avg.toFixed(2);
-      document.getElementById('stat-clv').className = `card-value ${avg>=0?'green':'red'}`;
+      document.getElementById('stat-clv').textContent = (avg>=0?'+':'') + avg.toFixed(2);
+      document.getElementById('stat-clv').className = 'card-value ' + (avg >= 0 ? 'green' : 'red');
     }
   }
-
-  // Alerts
   const alerts = await fetchJSON('/predictions/alerts/recent?limit=200');
-  if (alerts) {
-    document.getElementById('stat-alerts').textContent = alerts.length;
-  }
+  if (alerts) document.getElementById('stat-alerts').textContent = alerts.length;
 }
 
 async function loadPredictions() {
   const sport = document.getElementById('sport-filter').value;
+  const dirF = document.getElementById('dir-filter').value;
+  const confF = document.getElementById('conf-filter').value;
   const url = `/predictions/recent?limit=100${sport ? '&sport='+sport : ''}`;
   const preds = await fetchJSON(url);
-  const tbody = document.getElementById('pred-table-body');
+  const list = document.getElementById('pred-list');
   if (!preds || preds.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty">No predictions yet</td></tr>';
+    list.innerHTML = '<div class="empty">No predictions yet — run a prediction via POST /predictions</div>';
+    document.getElementById('pred-count').textContent = '0';
     return;
   }
-  document.getElementById('pred-count').textContent = preds.length;
-  tbody.innerHTML = preds.map(p => {
-    const dir = p.predicted_direction;
-    const clvVal = p.clv;
-    const clvStr = clvVal != null ? `<span class="${clvVal>=0?'clv-pos':'clv-neg'}">${clvVal>=0?'+':''}${clvVal.toFixed(1)}</span>` : '<span class="clv-null">—</span>';
-    const result = p.is_correct == null
-      ? '<span class="pill pending">Pending</span>'
-      : p.is_correct
-        ? '<span class="pill correct">Win</span>'
-        : '<span class="pill wrong">Loss</span>';
-    const confPct = Math.round((p.confidence||0)*100);
-    return `<tr>
-      <td>${p.game_id ? p.game_id.slice(-8) : '—'}</td>
-      <td><b>${(p.sport||'').toUpperCase()}</b></td>
-      <td><span class="pill ${dir}">${dir.toUpperCase()}</span></td>
-      <td><div class="conf-bar"><div class="conf-track"><div class="conf-fill" style="width:${confPct}%"></div></div>${confPct}%</div></td>
-      <td>${fmt(p.prob_over*100,1)}%</td>
-      <td>${result}</td>
-      <td>${clvStr}</td>
-      <td style="color:var(--muted)">${timeAgo(p.predicted_at)}</td>
-    </tr>`;
-  }).join('');
+  let filtered = preds;
+  if (dirF) filtered = filtered.filter(p => p.predicted_direction === dirF);
+  if (confF === 'strong') filtered = filtered.filter(p => p.confidence >= .30);
+  else if (confF === 'moderate') filtered = filtered.filter(p => p.confidence >= .15 && p.confidence < .30);
+  else if (confF === 'weak') filtered = filtered.filter(p => p.confidence < .15);
+  _allPreds = filtered;
+  document.getElementById('pred-count').textContent = filtered.length;
+  list.innerHTML = filtered.map(renderPredCard).join('');
 }
 
 async function loadAlerts() {
@@ -284,43 +771,40 @@ async function loadAlerts() {
     return;
   }
   document.getElementById('alert-count').textContent = alerts.length;
-  tbody.innerHTML = alerts.map(a => `<tr class="alert-row">
-    <td>${a.sport}</td>
-    <td>${a.home_team} vs ${a.away_team}</td>
+  tbody.innerHTML = alerts.map(a => `<tr>
+    <td><span class="sport-badge ${a.sport}">${(a.sport||'').toUpperCase()}</span></td>
+    <td><strong>${a.home_team} vs ${a.away_team}</strong></td>
     <td><span class="pill ${a.direction}">${a.direction.toUpperCase()} ${a.total_line}</span></td>
-    <td>${Math.round(a.confidence*100)}%</td>
+    <td><strong>${Math.round(a.confidence*100)}%</strong></td>
     <td>${fmt(a.edge*100,1)}%</td>
     <td>${a.game_date}</td>
-    <td><span class="status-dot ${a.fired?'dot-green':'dot-yellow'}"></span>${a.fired?'Sent':'Queued'}</td>
+    <td><span class="status-dot ${a.fired?'dot-green':'dot-yellow'}"></span>${a.fired?'Fired':'Queued'}</td>
   </tr>`).join('');
 }
 
 async function loadModels() {
-  const perf = await fetchJSON('/models/performance');
-  const live = await fetchJSON('/models/accuracy/live');
+  const [perf, live] = await Promise.all([
+    fetchJSON('/models/performance'),
+    fetchJSON('/models/accuracy/live'),
+  ]);
   const container = document.getElementById('model-cards');
   if (!perf || perf.length === 0) {
-    container.innerHTML = '<div class="empty">No trained models found. Run training first.</div>';
+    container.innerHTML = '<div class="empty">No trained models found.</div>';
     return;
   }
-  // Group latest per sport
-  const byVersion = {};
-  perf.forEach(m => {
-    if (!byVersion[m.sport] || m.trained_at > byVersion[m.sport].trained_at) byVersion[m.sport] = m;
-  });
-  container.innerHTML = Object.entries(byVersion).map(([sport, m]) => {
-    const liveAcc = live && live[sport] ? live[sport] : null;
+  const latest = {};
+  perf.forEach(m => { if (!latest[m.sport] || m.trained_at > latest[m.sport].trained_at) latest[m.sport] = m; });
+  container.innerHTML = Object.entries(latest).map(([sport, m]) => {
+    const liveAcc = live?.[sport];
     const acc = m.accuracy != null ? (m.accuracy*100).toFixed(1)+'%' : '—';
-    const auc = m.brier_score != null ? fmt(m.brier_score, 4) : '—';
-    const ll = m.log_loss != null ? fmt(m.log_loss, 4) : '—';
-    const liveStr = liveAcc && liveAcc.total > 0 ? `${(liveAcc.accuracy*100).toFixed(1)}% (${liveAcc.total} bets)` : 'No resolved bets';
+    const liveStr = liveAcc?.total > 0 ? `${(liveAcc.accuracy*100).toFixed(1)}% (${liveAcc.total} bets)` : 'No resolved bets';
     return `<div class="model-card">
       <div class="model-sport ${sport}">${sport.toUpperCase()}</div>
       <div class="metric-row"><span class="metric-label">Version</span><span class="metric-val" style="font-size:11px">${m.version}</span></div>
       <div class="metric-row"><span class="metric-label">Holdout Accuracy</span><span class="metric-val" style="color:${parseFloat(acc)>=52?'var(--green)':'var(--yellow)'}">${acc}</span></div>
-      <div class="metric-row"><span class="metric-label">Brier Score</span><span class="metric-val">${auc}</span></div>
-      <div class="metric-row"><span class="metric-label">Log Loss</span><span class="metric-val">${ll}</span></div>
-      <div class="metric-row"><span class="metric-label">Training Games</span><span class="metric-val">${m.training_games ?? '—'}</span></div>
+      <div class="metric-row"><span class="metric-label">Brier Score</span><span class="metric-val">${fmt(m.brier_score,4)}</span></div>
+      <div class="metric-row"><span class="metric-label">Log Loss</span><span class="metric-val">${fmt(m.log_loss,4)}</span></div>
+      <div class="metric-row"><span class="metric-label">Training Games</span><span class="metric-val">${m.training_games?.toLocaleString() ?? '—'}</span></div>
       <div class="metric-row"><span class="metric-label">Features</span><span class="metric-val">${m.feature_count ?? '—'}</span></div>
       <div class="metric-row"><span class="metric-label">Live Accuracy</span><span class="metric-val">${liveStr}</span></div>
     </div>`;
@@ -334,7 +818,7 @@ async function loadAll() {
 }
 
 loadAll();
-setInterval(loadAll, 60000);  // auto-refresh every minute
+setInterval(loadAll, 60000);
 </script>
 </body>
 </html>

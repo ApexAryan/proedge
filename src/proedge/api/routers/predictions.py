@@ -230,17 +230,23 @@ async def get_recent_predictions(
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
 ):
-    """Recent predictions for the dashboard, ordered newest-first."""
+    """Recent predictions with full game context, ordered newest-first."""
     pred_repo = PredictionRepository(db)
-    preds = await pred_repo.get_recent(sport=sport, limit=limit)
+    rows = await pred_repo.get_recent_with_games(sport=sport, limit=limit)
     return [
         {
             "prediction_id": str(p.id),
             "game_id": str(p.game_id),
             "sport": p.sport,
+            "home_team": g.home_team,
+            "away_team": g.away_team,
+            "game_date": g.game_date.isoformat() if g.game_date else None,
+            "total_line": g.total_line,
             "model_version": p.model_version,
             "prob_over": p.prob_over,
             "prob_under": p.prob_under,
+            "ci_lower": p.ci_lower,
+            "ci_upper": p.ci_upper,
             "predicted_direction": p.predicted_direction,
             "confidence": p.confidence,
             "predicted_at": p.predicted_at.isoformat() if p.predicted_at else None,
@@ -250,7 +256,7 @@ async def get_recent_predictions(
             "closing_line": p.closing_line,
             "settled_at": p.settled_at.isoformat() if p.settled_at else None,
         }
-        for p in preds
+        for p, g in rows
     ]
 
 
