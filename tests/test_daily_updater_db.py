@@ -3,6 +3,7 @@ DB-layer tests for DailyUpdater._persist_injury_reports() and ._settle_predictio
 
 All database I/O is mocked via SyncSessionLocal — no real Postgres needed.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -18,11 +19,14 @@ from proedge.pipeline.ingestion.injuries import InjuredPlayer
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _updater(sport: str = "nba") -> DailyUpdater:
     return DailyUpdater(sport, data_dir="/tmp/proedge_test_updater")
 
 
-def _player(name: str = "LeBron James", is_key: bool = True, comment: str = "Knee") -> InjuredPlayer:
+def _player(
+    name: str = "LeBron James", is_key: bool = True, comment: str = "Knee"
+) -> InjuredPlayer:
     return InjuredPlayer(name=name, team="LAL", status="Out", is_key=is_key, comment=comment)
 
 
@@ -49,8 +53,8 @@ def _games_df(**overrides) -> pd.DataFrame:
 # _persist_injury_reports()
 # ---------------------------------------------------------------------------
 
-class TestPersistInjuryReports:
 
+class TestPersistInjuryReports:
     def test_empty_records_skips_db(self):
         updater = _updater()
         with patch("proedge.db.session.SyncSessionLocal") as mock_cls:
@@ -97,7 +101,9 @@ class TestPersistInjuryReports:
         session = _mock_session()
         session.add_all.side_effect = lambda items: added.extend(items)
 
-        records = [("LAL", "nba", [_player(name="A Very Long Player Name That Exceeds Limits XYZ")])]
+        records = [
+            ("LAL", "nba", [_player(name="A Very Long Player Name That Exceeds Limits XYZ")])
+        ]
         with patch("proedge.db.session.SyncSessionLocal", return_value=session):
             updater._persist_injury_reports(records)
 
@@ -188,8 +194,8 @@ class TestPersistInjuryReports:
 # _settle_predictions()
 # ---------------------------------------------------------------------------
 
-class TestSettlePredictions:
 
+class TestSettlePredictions:
     # ------------------------------------------------------------------
     # Session mock factory
     # ------------------------------------------------------------------
@@ -269,7 +275,9 @@ class TestSettlePredictions:
 
         session = self._session_with_game(total_line=218.5, predictions=[pred])
         with patch("proedge.db.session.SyncSessionLocal", return_value=session):
-            result = updater._settle_predictions(_games_df(total=[220], home_score=[112], away_score=[108]))
+            result = updater._settle_predictions(
+                _games_df(total=[220], home_score=[112], away_score=[108])
+            )
 
         assert result == 1
 
@@ -282,7 +290,9 @@ class TestSettlePredictions:
 
         session = self._session_with_game(total_line=218.5, predictions=preds)
         with patch("proedge.db.session.SyncSessionLocal", return_value=session):
-            result = updater._settle_predictions(_games_df(total=[220], home_score=[112], away_score=[108]))
+            result = updater._settle_predictions(
+                _games_df(total=[220], home_score=[112], away_score=[108])
+            )
 
         assert result == 2
 
@@ -293,7 +303,9 @@ class TestSettlePredictions:
 
         session = self._session_with_game(total_line=218.5, predictions=[pred])
         with patch("proedge.db.session.SyncSessionLocal", return_value=session):
-            result = updater._settle_predictions(_games_df(total=[210], home_score=[105], away_score=[105]))
+            result = updater._settle_predictions(
+                _games_df(total=[210], home_score=[105], away_score=[105])
+            )
 
         assert result == 1
 
@@ -314,6 +326,7 @@ class TestSettlePredictions:
         pred_b = MagicMock(id=uuid.uuid4(), predicted_direction="under")
 
         session = _mock_session()
+
         # Sequence: game_A select, game_A update, pred_A select, pred_A update,
         #            game_B select, game_B update, pred_B select, pred_B update
         def _make_game_result(g):
@@ -337,12 +350,14 @@ class TestSettlePredictions:
             MagicMock(),
         ]
 
-        df = pd.DataFrame({
-            "game_id": ["GA001", "GB002"],
-            "home_score": [113, 102],
-            "away_score": [109, 108],
-            "total": [222, 210],
-        })
+        df = pd.DataFrame(
+            {
+                "game_id": ["GA001", "GB002"],
+                "home_score": [113, 102],
+                "away_score": [109, 108],
+                "total": [222, 210],
+            }
+        )
         with patch("proedge.db.session.SyncSessionLocal", return_value=session):
             result = updater._settle_predictions(df)
 

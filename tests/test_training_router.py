@@ -1,4 +1,5 @@
 """Tests for POST /training/update and POST /training/retrain endpoints."""
+
 from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
@@ -11,6 +12,7 @@ client = TestClient(app)
 # ---------------------------------------------------------------------------
 # POST /training/update/{sport}
 # ---------------------------------------------------------------------------
+
 
 def test_training_update_invalid_sport():
     resp = client.post("/training/update/hockey")
@@ -104,14 +106,23 @@ def test_training_update_response_fields():
         MockDU.return_value.run.return_value = mock_result
         resp = client.post("/training/update/nba")
 
-    for key in ("sport", "date", "games_found", "games_added", "games_skipped",
-                "retrain_triggered", "retrain_metrics", "message"):
+    for key in (
+        "sport",
+        "date",
+        "games_found",
+        "games_added",
+        "games_skipped",
+        "retrain_triggered",
+        "retrain_metrics",
+        "message",
+    ):
         assert key in resp.json(), f"Missing key: {key}"
 
 
 # ---------------------------------------------------------------------------
 # POST /training/retrain/{sport}
 # ---------------------------------------------------------------------------
+
 
 def test_training_retrain_invalid_sport():
     resp = client.post("/training/retrain/hockey")
@@ -145,8 +156,17 @@ def test_training_retrain_response_fields():
     with patch("proedge.pipeline.training.trainer.train", return_value=mock_metrics):
         resp = client.post("/training/retrain/nba")
 
-    for key in ("sport", "version", "accuracy", "auc", "log_loss",
-                "brier_score", "training_games", "feature_count", "message"):
+    for key in (
+        "sport",
+        "version",
+        "accuracy",
+        "auc",
+        "log_loss",
+        "brier_score",
+        "training_games",
+        "feature_count",
+        "message",
+    ):
         assert key in resp.json(), f"Missing key: {key}"
 
 

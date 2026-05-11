@@ -1,4 +1,5 @@
 """PrizePicks projections fetcher — player props, game spreads, and totals."""
+
 from __future__ import annotations
 
 import logging
@@ -55,9 +56,9 @@ class PlayerProjection:
     home_team: str
     away_team: str
     start_time: datetime | None
-    status: str           # "pre_game", "locked", "disabled"
+    status: str  # "pre_game", "locked", "disabled"
     is_promo: bool
-    odds_type: str        # "standard" | "demon" (harder) | "goblin" (easier)
+    odds_type: str  # "standard" | "demon" (harder) | "goblin" (easier)
     projection_type: str  # stat category label e.g. "Single Stat", "Fantasy Score"
     sport: str
 
@@ -68,7 +69,7 @@ class GameLine:
     home_team: str
     away_team: str
     start_time: datetime | None
-    stat_type: str       # "Total Points", "Spread", etc.
+    stat_type: str  # "Total Points", "Spread", etc.
     line: float
     sport: str
 
@@ -109,10 +110,12 @@ class PrizePicksBoard:
     def total_line_for(self, home_team: str, away_team: str) -> float | None:
         """Return the game total line if PrizePicks has one for this matchup."""
         for gl in self.game_lines:
-            if gl.stat_type in ("Total Points", "Game Total Points", "Total Runs",
-                                "Total Goals") and (
-                gl.home_team == home_team or gl.away_team == away_team
-            ):
+            if gl.stat_type in (
+                "Total Points",
+                "Game Total Points",
+                "Total Runs",
+                "Total Goals",
+            ) and (gl.home_team == home_team or gl.away_team == away_team):
                 return gl.line
         return None
 
@@ -139,7 +142,9 @@ async def fetch_board(sport: str, timeout: float = 15.0) -> PrizePicksBoard:
         "single_stat": "true",
     }
 
-    async with httpx.AsyncClient(headers=_HEADERS, timeout=timeout, follow_redirects=True) as client:
+    async with httpx.AsyncClient(
+        headers=_HEADERS, timeout=timeout, follow_redirects=True
+    ) as client:
         resp = await client.get(url, params=params)
         resp.raise_for_status()
         payload = resp.json()
@@ -194,7 +199,9 @@ def _parse_board(sport: str, payload: dict[str, Any]) -> PrizePicksBoard:
                 logger.warning(
                     "PrizePicks game %s missing team abbreviation(s): home=%r away=%r — "
                     "API schema may have changed",
-                    item_id, home_abbrev, away_abbrev,
+                    item_id,
+                    home_abbrev,
+                    away_abbrev,
                 )
             games[item_id] = {
                 "home_team": home_abbrev,
@@ -213,11 +220,7 @@ def _parse_board(sport: str, payload: dict[str, Any]) -> PrizePicksBoard:
         rels = proj.get("relationships", {})
         proj_id = proj.get("id", "")
 
-        stat_type: str = (
-            attrs.get("stat_type")
-            or attrs.get("stat_display_name")
-            or ""
-        )
+        stat_type: str = attrs.get("stat_type") or attrs.get("stat_display_name") or ""
         line_raw = attrs.get("line_score", attrs.get("line", 0))
         try:
             line = float(line_raw)
@@ -249,15 +252,17 @@ def _parse_board(sport: str, payload: dict[str, Any]) -> PrizePicksBoard:
         is_game_line = stat_type in _GAME_LEVEL_STATS or event_type == "game"
 
         if is_game_line:
-            board.game_lines.append(GameLine(
-                game_id=game_id,
-                home_team=home_team,
-                away_team=away_team,
-                start_time=start_time,
-                stat_type=stat_type,
-                line=line,
-                sport=sport,
-            ))
+            board.game_lines.append(
+                GameLine(
+                    game_id=game_id,
+                    home_team=home_team,
+                    away_team=away_team,
+                    start_time=start_time,
+                    stat_type=stat_type,
+                    line=line,
+                    sport=sport,
+                )
+            )
         else:
             # Resolve player — event_type "team" means team-level prop (e.g. team total)
             player_rel = rels.get("new_player") or rels.get("player") or {}
@@ -278,23 +283,25 @@ def _parse_board(sport: str, payload: dict[str, Any]) -> PrizePicksBoard:
             )
             position = player_attrs.get("position", "")
 
-            board.player_projections.append(PlayerProjection(
-                projection_id=proj_id,
-                player_name=player_name,
-                team=team,
-                position=position,
-                stat_type=stat_type,
-                line=line,
-                game_id=game_id,
-                home_team=home_team,
-                away_team=away_team,
-                start_time=start_time,
-                status=status,
-                is_promo=is_promo,
-                odds_type=odds_type,
-                projection_type=proj_type,
-                sport=sport,
-            ))
+            board.player_projections.append(
+                PlayerProjection(
+                    projection_id=proj_id,
+                    player_name=player_name,
+                    team=team,
+                    position=position,
+                    stat_type=stat_type,
+                    line=line,
+                    game_id=game_id,
+                    home_team=home_team,
+                    away_team=away_team,
+                    start_time=start_time,
+                    status=status,
+                    is_promo=is_promo,
+                    odds_type=odds_type,
+                    projection_type=proj_type,
+                    sport=sport,
+                )
+            )
 
     logger.info(
         "PrizePicks %s: %d player props, %d game lines across %d games",

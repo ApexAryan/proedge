@@ -36,7 +36,7 @@ class SportsDataClient:
                 return resp.json()
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429:
-                    await asyncio.sleep(2 ** attempt)
+                    await asyncio.sleep(2**attempt)
                     continue
                 raise
             except httpx.RequestError as e:

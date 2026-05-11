@@ -1,4 +1,5 @@
 """Shared helpers for ingestion fetchers."""
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -54,10 +55,18 @@ def compute_proxy_lines(
         h_pts = float(row["home_score"])
         a_pts = float(row["away_score"])
 
-        h_off = float(np.mean(team_scored[home][-window:])) if team_scored[home] else home_off_default
-        h_def = float(np.mean(team_allowed[home][-window:])) if team_allowed[home] else home_def_default
-        a_off = float(np.mean(team_scored[away][-window:])) if team_scored[away] else away_off_default
-        a_def = float(np.mean(team_allowed[away][-window:])) if team_allowed[away] else away_def_default
+        h_off = (
+            float(np.mean(team_scored[home][-window:])) if team_scored[home] else home_off_default
+        )
+        h_def = (
+            float(np.mean(team_allowed[home][-window:])) if team_allowed[home] else home_def_default
+        )
+        a_off = (
+            float(np.mean(team_scored[away][-window:])) if team_scored[away] else away_off_default
+        )
+        a_def = (
+            float(np.mean(team_allowed[away][-window:])) if team_allowed[away] else away_def_default
+        )
 
         expected = (h_off + a_def) / 2.0 + (a_off + h_def) / 2.0 + home_advantage
         line = expected + float(rng.normal(0, noise_std))

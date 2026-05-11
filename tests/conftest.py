@@ -4,7 +4,9 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 
-os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://proedge:proedge@localhost:5432/proedge_test")
+os.environ.setdefault(
+    "DATABASE_URL", "postgresql+asyncpg://proedge:proedge@localhost:5432/proedge_test"
+)
 os.environ.setdefault("MODEL_REGISTRY_PATH", "/tmp/proedge_test_models")
 
 from proedge.pipeline.ingestion.stats import STAT_KEYS
@@ -25,22 +27,24 @@ def sample_game_df():
         away = teams[(i + 1) % len(teams)]
         total = float(rng.normal(224, 18))
         line = total + rng.normal(0, 2)
-        rows.append({
-            "game_id": f"test_{i:04d}",
-            "sport": sport,
-            "season": 2024 if i < 100 else 2025,
-            "game_date": datetime(2024, 1, 1) + timedelta(days=i),
-            "home_team": home,
-            "away_team": away,
-            "home_score": int(total / 2 + rng.normal(0, 5)),
-            "away_score": int(total / 2 + rng.normal(0, 5)),
-            "total": total,
-            "total_line": round(line, 1),
-            "result_over": int(total > line),
-            "venue": f"{home}_arena",
-            **{f"home_{s}": float(rng.uniform(90, 130)) for s in stat_cols},
-            **{f"away_{s}": float(rng.uniform(90, 130)) for s in stat_cols},
-        })
+        rows.append(
+            {
+                "game_id": f"test_{i:04d}",
+                "sport": sport,
+                "season": 2024 if i < 100 else 2025,
+                "game_date": datetime(2024, 1, 1) + timedelta(days=i),
+                "home_team": home,
+                "away_team": away,
+                "home_score": int(total / 2 + rng.normal(0, 5)),
+                "away_score": int(total / 2 + rng.normal(0, 5)),
+                "total": total,
+                "total_line": round(line, 1),
+                "result_over": int(total > line),
+                "venue": f"{home}_arena",
+                **{f"home_{s}": float(rng.uniform(90, 130)) for s in stat_cols},
+                **{f"away_{s}": float(rng.uniform(90, 130)) for s in stat_cols},
+            }
+        )
     df = pd.DataFrame(rows)
     df["game_date"] = pd.to_datetime(df["game_date"])
     return df
@@ -50,6 +54,7 @@ def sample_game_df():
 def sample_feature_matrix(sample_game_df):
     """Pre-computed feature matrix for model tests."""
     from proedge.pipeline.features.store import FeatureStore
+
     store = FeatureStore(cache_dir="/tmp/proedge_test_features")
     return store.compute(sample_game_df, "nba", use_cache=False)
 

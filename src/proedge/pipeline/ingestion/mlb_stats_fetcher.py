@@ -1,4 +1,5 @@
 """Fetch real MLB regular-season game data from the official MLB Stats API."""
+
 from __future__ import annotations
 
 import logging
@@ -10,27 +11,33 @@ import numpy as np
 import pandas as pd
 
 from proedge.pipeline.ingestion.stats import STAT_KEYS
-from proedge.pipeline.ingestion.utils import safe_float as _safe_float, safe_int as _safe_int, compute_proxy_lines as _proxy
+from proedge.pipeline.ingestion.utils import (
+    safe_float as _safe_float,
+    safe_int as _safe_int,
+    compute_proxy_lines as _proxy,
+)
 
 logger = logging.getLogger(__name__)
 
-_SCHEDULE_URL  = "https://statsapi.mlb.com/api/v1/schedule"
-_BOXSCORE_URL  = "https://statsapi.mlb.com/api/v1/game/{game_pk}/boxscore"
-_TEAMS_URL     = "https://statsapi.mlb.com/api/v1/teams"
+_SCHEDULE_URL = "https://statsapi.mlb.com/api/v1/schedule"
+_BOXSCORE_URL = "https://statsapi.mlb.com/api/v1/game/{game_pk}/boxscore"
+_TEAMS_URL = "https://statsapi.mlb.com/api/v1/teams"
 
 _DEFAULT_SEASONS = [2019, 2020, 2021, 2022, 2023]
 
 # Teams with retractable or permanent roof (weather-neutral)
-_MLB_DOME_TEAMS = frozenset({
-    "ARI",  # Chase Field (retractable)
-    "HOU",  # Minute Maid Park (retractable)
-    "MIA",  # loanDepot Park (retractable)
-    "MIL",  # American Family Field (retractable)
-    "MIN",  # Target Field (open but included conservatively — cold climate)
-    "SEA",  # T-Mobile Park (retractable)
-    "TB",   # Tropicana Field (fixed dome)
-    "TOR",  # Rogers Centre (retractable)
-})
+_MLB_DOME_TEAMS = frozenset(
+    {
+        "ARI",  # Chase Field (retractable)
+        "HOU",  # Minute Maid Park (retractable)
+        "MIA",  # loanDepot Park (retractable)
+        "MIL",  # American Family Field (retractable)
+        "MIN",  # Target Field (open but included conservatively — cold climate)
+        "SEA",  # T-Mobile Park (retractable)
+        "TB",  # Tropicana Field (fixed dome)
+        "TOR",  # Rogers Centre (retractable)
+    }
+)
 
 # Season date ranges (start, end) — 2020 was the COVID-shortened season
 _SEASON_DATES: dict[int, tuple[str, str]] = {
@@ -46,10 +53,10 @@ _ALTITUDE_TEAM = "COL"
 _COORS_ALTITUDE = 5280.0
 
 
-
 # ---------------------------------------------------------------------------
 # Team ID → abbreviation cache
 # ---------------------------------------------------------------------------
+
 
 def _fetch_team_map(client: httpx.Client) -> dict[int, str]:
     """
@@ -73,9 +80,8 @@ def _fetch_team_map(client: httpx.Client) -> dict[int, str]:
 # Schedule fetching
 # ---------------------------------------------------------------------------
 
-def _fetch_schedule(
-    client: httpx.Client, start_date: str, end_date: str
-) -> list[dict]:
+
+def _fetch_schedule(client: httpx.Client, start_date: str, end_date: str) -> list[dict]:
     """
     Return the flat list of game dicts for a date range.
     Only games with detailedState == 'Final' are included.
@@ -85,10 +91,10 @@ def _fetch_schedule(
         resp = client.get(
             _SCHEDULE_URL,
             params={
-                "sportId":   1,
+                "sportId": 1,
                 "startDate": start_date,
-                "endDate":   end_date,
-                "gameType":  "R",
+                "endDate": end_date,
+                "gameType": "R",
             },
             timeout=30,
         )
@@ -99,15 +105,14 @@ def _fetch_schedule(
                 if g.get("status", {}).get("detailedState") == "Final":
                     games.append(g)
     except Exception as exc:
-        logger.warning(
-            "Schedule fetch failed (%s – %s): %s", start_date, end_date, exc
-        )
+        logger.warning("Schedule fetch failed (%s – %s): %s", start_date, end_date, exc)
     return games
 
 
 # ---------------------------------------------------------------------------
 # Boxscore fetching and parsing
 # ---------------------------------------------------------------------------
+
 
 def _fetch_boxscore(client: httpx.Client, game_pk: int) -> dict:
     try:
@@ -138,31 +143,31 @@ def _parse_side_stats(side_data: dict) -> dict[str, float]:
     Parse batting + pitching teamStats from one side's boxscore data.
     Returns a dict with all STAT_KEYS["mlb"] fields populated.
     """
-    batting  = side_data.get("teamStats", {}).get("batting", {})
+    batting = side_data.get("teamStats", {}).get("batting", {})
     pitching = side_data.get("teamStats", {}).get("pitching", {})
 
-    runs_scored  = _safe_int(batting.get("runs", 0))
-    hits         = _safe_int(batting.get("hits", 0))
-    home_runs    = _safe_int(batting.get("homeRuns", 0))
+    runs_scored = _safe_int(batting.get("runs", 0))
+    hits = _safe_int(batting.get("hits", 0))
+    home_runs = _safe_int(batting.get("homeRuns", 0))
     bat_strikeouts = _safe_int(batting.get("strikeOuts", 0))
-    walks        = _safe_int(batting.get("baseOnBalls", 0))
-    batting_avg  = _safe_float(batting.get("avg", "0.000"))
-    obp          = _safe_float(batting.get("obp", "0.000"))
-    slg          = _safe_float(batting.get("slg", "0.000"))
-    ops          = _safe_float(batting.get("ops", "0.000"))
+    walks = _safe_int(batting.get("baseOnBalls", 0))
+    batting_avg = _safe_float(batting.get("avg", "0.000"))
+    obp = _safe_float(batting.get("obp", "0.000"))
+    slg = _safe_float(batting.get("slg", "0.000"))
+    ops = _safe_float(batting.get("ops", "0.000"))
 
-    runs_allowed    = _safe_int(pitching.get("runs", 0))
-    pit_strikeouts  = _safe_int(pitching.get("strikeOuts", 0))
-    pit_walks       = _safe_int(pitching.get("baseOnBalls", 0))
-    era             = _safe_float(pitching.get("era", "0.00"))
-    whip            = _safe_float(pitching.get("whip", "0.00"))
+    runs_allowed = _safe_int(pitching.get("runs", 0))
+    pit_strikeouts = _safe_int(pitching.get("strikeOuts", 0))
+    pit_walks = _safe_int(pitching.get("baseOnBalls", 0))
+    era = _safe_float(pitching.get("era", "0.00"))
+    whip = _safe_float(pitching.get("whip", "0.00"))
 
     # Ground/fly ball rates from pitching stats
-    fly_outs    = _safe_int(pitching.get("flyOuts", 0))
+    fly_outs = _safe_int(pitching.get("flyOuts", 0))
     ground_outs = _safe_int(pitching.get("groundOuts", 0))
-    total_outs  = max(1, fly_outs + ground_outs)
+    total_outs = max(1, fly_outs + ground_outs)
     ground_ball_rate = ground_outs / total_outs
-    fly_ball_rate    = fly_outs / total_outs
+    fly_ball_rate = fly_outs / total_outs
 
     # Derived
     kb_ratio = pit_strikeouts / max(1, pit_walks)
@@ -171,22 +176,22 @@ def _parse_side_stats(side_data: dict) -> dict[str, float]:
     errors = _safe_int(side_data.get("errors", 0))
 
     return {
-        "runsScored":    float(runs_scored),
-        "runsAllowed":   float(runs_allowed),
-        "hits":          float(hits),
-        "errors":        float(errors),
-        "walks":         float(walks),
-        "strikeouts":    float(bat_strikeouts),
-        "era":           era,
-        "whip":          whip,
-        "battingAvg":    batting_avg,
-        "onBasePct":     obp,
-        "sluggingPct":   slg,
-        "ops":           ops,
-        "homeRuns":      float(home_runs),
-        "kBbRatio":       kb_ratio,
+        "runsScored": float(runs_scored),
+        "runsAllowed": float(runs_allowed),
+        "hits": float(hits),
+        "errors": float(errors),
+        "walks": float(walks),
+        "strikeouts": float(bat_strikeouts),
+        "era": era,
+        "whip": whip,
+        "battingAvg": batting_avg,
+        "onBasePct": obp,
+        "sluggingPct": slg,
+        "ops": ops,
+        "homeRuns": float(home_runs),
+        "kBbRatio": kb_ratio,
         "groundBallRate": ground_ball_rate,
-        "flyBallRate":    fly_ball_rate,
+        "flyBallRate": fly_ball_rate,
     }
 
 
@@ -201,7 +206,7 @@ def _build_game_row(
     Returns None if the row cannot be built.
     """
     try:
-        game_pk   = int(game.get("gamePk", 0))
+        game_pk = int(game.get("gamePk", 0))
         game_date_raw = game.get("gameDate", game.get("officialDate", ""))
         try:
             game_date = pd.Timestamp(game_date_raw).tz_localize(None)
@@ -245,18 +250,18 @@ def _build_game_row(
             wind_speed_mph = 0.0
 
         row: dict = {
-            "game_id":    str(game_pk),
-            "sport":      "mlb",
-            "season":     season,
-            "game_date":  game_date,
-            "home_team":  home_abbr,
-            "away_team":  away_abbr,
+            "game_id": str(game_pk),
+            "sport": "mlb",
+            "season": season,
+            "game_date": game_date,
+            "home_team": home_abbr,
+            "away_team": away_abbr,
             "home_score": home_score,
             "away_score": away_score,
-            "total":      total,
+            "total": total,
             "total_line": np.nan,
             "result_over": np.nan,
-            "venue":      f"{home_abbr}_stadium",
+            "venue": f"{home_abbr}_stadium",
         }
 
         # Per-team stat columns — iterate STAT_KEYS["mlb"] for guaranteed coverage
@@ -265,18 +270,18 @@ def _build_game_row(
             row[f"away_{stat}"] = away_stats.get(stat, 0.0)
 
         # GROUP C
-        row["wind_speed_mph"]  = wind_speed_mph
-        row["temperature_f"]   = temperature_f if temperature_f > 0 else 70.0
-        row["is_dome"]         = is_dome
-        row["altitude_feet"]   = altitude
-        row["is_playoff"]      = 0.0
+        row["wind_speed_mph"] = wind_speed_mph
+        row["temperature_f"] = temperature_f if temperature_f > 0 else 70.0
+        row["is_dome"] = is_dome
+        row["altitude_feet"] = altitude
+        row["is_playoff"] = 0.0
 
         # GROUP D
-        row["line_movement"]   = 0.0
+        row["line_movement"] = 0.0
         row["public_over_pct"] = 0.5
-        row["sharp_over_pct"]  = 0.5
-        row["ref_foul_rate"]   = 0.0
-        row["ump_walk_rate"]   = 0.0
+        row["sharp_over_pct"] = 0.5
+        row["ref_foul_rate"] = 0.0
+        row["ump_walk_rate"] = 0.0
 
         # GROUP E — count players on the IL from the boxscore roster
         row["home_key_players_out"] = float(_count_il_players(home_side))
@@ -285,9 +290,7 @@ def _build_game_row(
         return row
 
     except Exception as exc:
-        logger.warning(
-            "Failed to build row for gamePk=%s: %s", game.get("gamePk"), exc
-        )
+        logger.warning("Failed to build row for gamePk=%s: %s", game.get("gamePk"), exc)
         return None
 
 
@@ -295,16 +298,24 @@ def _build_game_row(
 # Proxy line
 # ---------------------------------------------------------------------------
 
+
 def _compute_proxy_lines(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
-    return _proxy(df, clip_lo=4.0, clip_hi=25.0,
-                  home_off_default=4.5, home_def_default=4.5,
-                  away_off_default=4.5, away_def_default=4.5,
-                  window=window)
+    return _proxy(
+        df,
+        clip_lo=4.0,
+        clip_hi=25.0,
+        home_off_default=4.5,
+        home_def_default=4.5,
+        away_off_default=4.5,
+        away_def_default=4.5,
+        window=window,
+    )
 
 
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+
 
 def fetch_mlb_games(
     seasons: list[int] | None = None,
@@ -338,17 +349,11 @@ def fetch_mlb_games(
         logger.info("Loaded %d MLB team abbreviations", len(team_map))
 
         for season in seasons:
-            start_date, end_date = _SEASON_DATES.get(
-                season, (f"{season}-04-01", f"{season}-10-01")
-            )
-            logger.info(
-                "  → MLB season %d (%s – %s)", season, start_date, end_date
-            )
+            start_date, end_date = _SEASON_DATES.get(season, (f"{season}-04-01", f"{season}-10-01"))
+            logger.info("  → MLB season %d (%s – %s)", season, start_date, end_date)
 
             games = _fetch_schedule(client, start_date, end_date)
-            logger.info(
-                "    Found %d final games in schedule", len(games)
-            )
+            logger.info("    Found %d final games in schedule", len(games))
 
             for game in games:
                 game_pk = game.get("gamePk")
@@ -370,11 +375,7 @@ def fetch_mlb_games(
     df["game_date"] = pd.to_datetime(df["game_date"]).dt.tz_localize(None)
 
     # De-duplicate by game_id in case schedule pages overlap
-    df = (
-        df.drop_duplicates(subset=["game_id"])
-          .sort_values("game_date")
-          .reset_index(drop=True)
-    )
+    df = df.drop_duplicates(subset=["game_id"]).sort_values("game_date").reset_index(drop=True)
 
     df = _compute_proxy_lines(df)
 

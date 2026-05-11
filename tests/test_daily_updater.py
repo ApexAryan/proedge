@@ -1,4 +1,5 @@
 """Unit tests for DailyUpdater — no network, no real DB required."""
+
 from __future__ import annotations
 
 import tempfile
@@ -11,7 +12,9 @@ import pandas as pd
 import pytest
 
 from proedge.pipeline.ingestion.daily_updater import (
-    DailyUpdater, UpdateResult, _MIN_NEW_GAMES_TO_RETRAIN,
+    DailyUpdater,
+    UpdateResult,
+    _MIN_NEW_GAMES_TO_RETRAIN,
 )
 
 
@@ -32,24 +35,27 @@ def _make_game_df(n: int = 5, sport: str = "nba") -> pd.DataFrame:
     rng = np.random.default_rng(0)
     rows = []
     for i in range(n):
-        rows.append({
-            "game_id": f"g{i:04d}",
-            "sport": sport,
-            "season": 2024,
-            "game_date": pd.Timestamp("2024-01-01") + pd.Timedelta(days=i),
-            "home_team": "BOS",
-            "away_team": "LAL",
-            "home_score": int(rng.integers(95, 130)),
-            "away_score": int(rng.integers(95, 130)),
-            "total": 220.0,
-            "total_line": 222.5,
-            "result_over": 0,
-            "venue": "BOS_arena",
-        })
+        rows.append(
+            {
+                "game_id": f"g{i:04d}",
+                "sport": sport,
+                "season": 2024,
+                "game_date": pd.Timestamp("2024-01-01") + pd.Timedelta(days=i),
+                "home_team": "BOS",
+                "away_team": "LAL",
+                "home_score": int(rng.integers(95, 130)),
+                "away_score": int(rng.integers(95, 130)),
+                "total": 220.0,
+                "total_line": 222.5,
+                "result_over": 0,
+                "venue": "BOS_arena",
+            }
+        )
     return pd.DataFrame(rows)
 
 
 # ── _append_to_historical ─────────────────────────────────────────────────────
+
 
 def test_append_creates_parquet_when_none_exists(updater, tmp_data_dir):
     df = _make_game_df(3)
@@ -87,6 +93,7 @@ def test_append_preserves_sort_order(updater):
 
 # ── _clear_feature_cache ──────────────────────────────────────────────────────
 
+
 def test_clear_cache_removes_sport_parquets(updater):
     cache_file = updater.features_dir / "nba_features_v1.parquet"
     cache_file.touch()
@@ -104,6 +111,7 @@ def test_clear_cache_no_op_when_empty(updater):
 
 
 # ── _compute_proxy_lines ─────────────────────────────────────────────────────
+
 
 def test_proxy_lines_adds_columns(updater):
     df = _make_game_df(5)
@@ -134,6 +142,7 @@ def test_proxy_lines_uses_historical_when_available(updater):
 
 # ── _count_new_since_last_retrain ────────────────────────────────────────────
 
+
 def test_count_new_returns_zero_when_no_historical(updater):
     with patch("proedge.pipeline.models.registry.ModelRegistry") as MockReg:
         MockReg.return_value.load_meta.side_effect = Exception("no model")
@@ -152,6 +161,7 @@ def test_count_new_counts_games_after_trained_at(updater):
 
 
 # ── run() integration (mocked fetch) ─────────────────────────────────────────
+
 
 def test_run_returns_update_result_no_games(updater):
     with patch.object(updater, "_fetch_completed_games", return_value=pd.DataFrame()):
@@ -182,6 +192,7 @@ def test_run_records_error_on_exception(updater):
 
 # ── UpdateResult dataclass ────────────────────────────────────────────────────
 
+
 def test_update_result_defaults():
     r = UpdateResult(sport="nba", date="2026-04-25")
     assert r.games_found == 0
@@ -190,6 +201,7 @@ def test_update_result_defaults():
 
 
 # ── _fetch_completed_games unsupported sport ──────────────────────────────────
+
 
 def test_fetch_completed_games_unsupported_sport(updater):
     result = updater._fetch_completed_games.__func__(
@@ -200,6 +212,7 @@ def test_fetch_completed_games_unsupported_sport(updater):
 
 # ── run() auto-retrain path ───────────────────────────────────────────────────
 
+
 def test_run_triggers_retrain_when_threshold_met(tmp_data_dir):
     u = DailyUpdater("nba", data_dir=str(tmp_data_dir), auto_retrain=True)
     u.features_dir.mkdir(parents=True, exist_ok=True)
@@ -208,8 +221,9 @@ def test_run_triggers_retrain_when_threshold_met(tmp_data_dir):
     with (
         patch.object(u, "_fetch_completed_games", return_value=df),
         patch.object(u, "_settle_predictions", return_value=0),
-        patch.object(u, "_count_new_since_last_retrain",
-                     return_value=_MIN_NEW_GAMES_TO_RETRAIN + 5),
+        patch.object(
+            u, "_count_new_since_last_retrain", return_value=_MIN_NEW_GAMES_TO_RETRAIN + 5
+        ),
         patch.object(u, "_retrain", return_value={"accuracy": 0.56}) as mock_retrain,
     ):
         result = u.run(date(2026, 4, 25))
@@ -238,6 +252,7 @@ def test_run_no_retrain_when_below_threshold(tmp_data_dir):
 
 # ── _retrain() ────────────────────────────────────────────────────────────────
 
+
 def test_retrain_calls_train_and_returns_metrics(updater):
     metrics = {"accuracy": 0.57, "auc": 0.61, "log_loss": 0.67}
     with (
@@ -254,8 +269,7 @@ def test_retrain_model_cache_refresh_failure_swallowed(updater):
     """If the model-cache refresh fails after retrain, the error must be swallowed."""
     with (
         patch("proedge.pipeline.training.trainer.train", return_value={"accuracy": 0.55}),
-        patch("proedge.api.routers.predictions._model_cache",
-              side_effect=Exception("import fail")),
+        patch("proedge.api.routers.predictions._model_cache", side_effect=Exception("import fail")),
     ):
         result = updater._retrain()  # must not raise
     assert "accuracy" in result
@@ -263,30 +277,45 @@ def test_retrain_model_cache_refresh_failure_swallowed(updater):
 
 # ── _fetch_nba_games() ────────────────────────────────────────────────────────
 
+
 def _bx_stats(pts: int = 112) -> dict:
     return {
         "points": pts,
-        "fieldGoalsMade": 42, "fieldGoalsAttempted": 85,
+        "fieldGoalsMade": 42,
+        "fieldGoalsAttempted": 85,
         "fieldGoalsPercentage": 0.494,
-        "threePointersMade": 14, "threePointersAttempted": 33,
+        "threePointersMade": 14,
+        "threePointersAttempted": 33,
         "threePointersPercentage": 0.424,
-        "freeThrowsMade": 14, "freeThrowsAttempted": 22,
+        "freeThrowsMade": 14,
+        "freeThrowsAttempted": 22,
         "freeThrowsPercentage": 0.636,
-        "reboundsOffensive": 10, "reboundsDefensive": 34, "reboundsTotal": 44,
-        "assists": 25, "steals": 8, "blocks": 4,
-        "turnovers": 14, "foulsPersonal": 20, "plusMinusPoints": 4,
+        "reboundsOffensive": 10,
+        "reboundsDefensive": 34,
+        "reboundsTotal": 44,
+        "assists": 25,
+        "steals": 8,
+        "blocks": 4,
+        "turnovers": 14,
+        "foulsPersonal": 20,
+        "plusMinusPoints": 4,
     }
 
 
-def _mock_nba_api(game_status: int = 3, game_id: str = "0021234567",
-                  bx_raises: Exception | None = None):
+def _mock_nba_api(
+    game_status: int = 3, game_id: str = "0021234567", bx_raises: Exception | None = None
+):
     mock_sb = MagicMock()
     mock_sb.get_dict.return_value = {
-        "scoreboard": {"games": [{
-            "gameId": game_id,
-            "gameStatus": game_status,
-            "gameTimeUTC": "2026-04-25T00:00:00Z",
-        }]}
+        "scoreboard": {
+            "games": [
+                {
+                    "gameId": game_id,
+                    "gameStatus": game_status,
+                    "gameTimeUTC": "2026-04-25T00:00:00Z",
+                }
+            ]
+        }
     }
 
     mock_bx = MagicMock()
@@ -313,10 +342,11 @@ def _mock_nba_api(game_status: int = 3, game_id: str = "0021234567",
 def test_fetch_nba_games_returns_dataframe(updater):
     mock_sb, mock_bx = _mock_nba_api()
     with (
-        patch("nba_api.stats.endpoints.scoreboardv3.ScoreboardV3",
-              return_value=mock_sb),
-        patch("nba_api.stats.endpoints.boxscoretraditionalv3.BoxScoreTraditionalV3",
-              return_value=mock_bx),
+        patch("nba_api.stats.endpoints.scoreboardv3.ScoreboardV3", return_value=mock_sb),
+        patch(
+            "nba_api.stats.endpoints.boxscoretraditionalv3.BoxScoreTraditionalV3",
+            return_value=mock_bx,
+        ),
         patch.object(updater, "_persist_injury_reports"),
         patch("time.sleep"),
     ):
@@ -331,8 +361,7 @@ def test_fetch_nba_games_returns_dataframe(updater):
 def test_fetch_nba_games_empty_scoreboard_returns_empty(updater):
     mock_sb = MagicMock()
     mock_sb.get_dict.return_value = {"scoreboard": {"games": []}}
-    with patch("nba_api.stats.endpoints.scoreboardv3.ScoreboardV3",
-               return_value=mock_sb):
+    with patch("nba_api.stats.endpoints.scoreboardv3.ScoreboardV3", return_value=mock_sb):
         result = updater._fetch_nba_games(date(2026, 4, 25))
     assert result.empty
 
@@ -340,10 +369,11 @@ def test_fetch_nba_games_empty_scoreboard_returns_empty(updater):
 def test_fetch_nba_games_non_final_game_skipped(updater):
     mock_sb, mock_bx = _mock_nba_api(game_status=2)  # 2 = in-progress
     with (
-        patch("nba_api.stats.endpoints.scoreboardv3.ScoreboardV3",
-              return_value=mock_sb),
-        patch("nba_api.stats.endpoints.boxscoretraditionalv3.BoxScoreTraditionalV3",
-              return_value=mock_bx),
+        patch("nba_api.stats.endpoints.scoreboardv3.ScoreboardV3", return_value=mock_sb),
+        patch(
+            "nba_api.stats.endpoints.boxscoretraditionalv3.BoxScoreTraditionalV3",
+            return_value=mock_bx,
+        ),
         patch("time.sleep"),
     ):
         result = updater._fetch_nba_games(date(2026, 4, 25))
@@ -353,10 +383,11 @@ def test_fetch_nba_games_non_final_game_skipped(updater):
 def test_fetch_nba_games_boxscore_exception_skips_game(updater):
     mock_sb, mock_bx = _mock_nba_api(bx_raises=RuntimeError("timeout"))
     with (
-        patch("nba_api.stats.endpoints.scoreboardv3.ScoreboardV3",
-              return_value=mock_sb),
-        patch("nba_api.stats.endpoints.boxscoretraditionalv3.BoxScoreTraditionalV3",
-              return_value=mock_bx),
+        patch("nba_api.stats.endpoints.scoreboardv3.ScoreboardV3", return_value=mock_sb),
+        patch(
+            "nba_api.stats.endpoints.boxscoretraditionalv3.BoxScoreTraditionalV3",
+            return_value=mock_bx,
+        ),
         patch("time.sleep"),
     ):
         result = updater._fetch_nba_games(date(2026, 4, 25))
@@ -365,23 +396,35 @@ def test_fetch_nba_games_boxscore_exception_skips_game(updater):
 
 # ── _fetch_nfl_games() ────────────────────────────────────────────────────────
 
-def _nfl_event(game_id: str = "401547656", target_date: str = "2026-01-15",
-               status: str = "STATUS_FINAL") -> dict:
+
+def _nfl_event(
+    game_id: str = "401547656", target_date: str = "2026-01-15", status: str = "STATUS_FINAL"
+) -> dict:
     return {
         "id": game_id,
-        "competitions": [{
-            "status": {"type": {"name": status}},
-            "date": f"{target_date}T18:00:00Z",
-        }],
+        "competitions": [
+            {
+                "status": {"type": {"name": status}},
+                "date": f"{target_date}T18:00:00Z",
+            }
+        ],
     }
 
 
 def _nfl_row() -> dict:
     return {
-        "game_id": "401547656", "sport": "nfl", "season": 2025,
-        "game_date": "2026-01-15", "home_team": "KC", "away_team": "BUF",
-        "home_score": 27, "away_score": 24, "total": 51, "total_line": 48.5,
-        "result_over": 1, "venue": "KC_stadium",
+        "game_id": "401547656",
+        "sport": "nfl",
+        "season": 2025,
+        "game_date": "2026-01-15",
+        "home_team": "KC",
+        "away_team": "BUF",
+        "home_score": 27,
+        "away_score": 24,
+        "total": 51,
+        "total_line": 48.5,
+        "result_over": 1,
+        "venue": "KC_stadium",
     }
 
 
@@ -403,14 +446,15 @@ def test_fetch_nfl_games_returns_dataframe(updater):
     mock_cls, _ = _mock_httpx_client()
     with (
         patch("httpx.Client", mock_cls),
-        patch("proedge.pipeline.ingestion.espn_nfl_fetcher._fetch_scoreboard",
-              return_value=[event]),
-        patch("proedge.pipeline.ingestion.espn_nfl_fetcher._fetch_summary",
-              return_value={}),
-        patch("proedge.pipeline.ingestion.espn_nfl_fetcher._build_game_row",
-              return_value=row),
-        patch("proedge.pipeline.ingestion.espn_nfl_fetcher._compute_proxy_lines",
-              return_value=result_df),
+        patch(
+            "proedge.pipeline.ingestion.espn_nfl_fetcher._fetch_scoreboard", return_value=[event]
+        ),
+        patch("proedge.pipeline.ingestion.espn_nfl_fetcher._fetch_summary", return_value={}),
+        patch("proedge.pipeline.ingestion.espn_nfl_fetcher._build_game_row", return_value=row),
+        patch(
+            "proedge.pipeline.ingestion.espn_nfl_fetcher._compute_proxy_lines",
+            return_value=result_df,
+        ),
     ):
         result = updater._fetch_nfl_games(date(2026, 1, 15))
 
@@ -423,8 +467,9 @@ def test_fetch_nfl_games_non_final_event_skipped(updater):
     mock_cls, _ = _mock_httpx_client()
     with (
         patch("httpx.Client", mock_cls),
-        patch("proedge.pipeline.ingestion.espn_nfl_fetcher._fetch_scoreboard",
-              return_value=[event]),
+        patch(
+            "proedge.pipeline.ingestion.espn_nfl_fetcher._fetch_scoreboard", return_value=[event]
+        ),
     ):
         result = updater._fetch_nfl_games(date(2026, 1, 15))
     assert result.empty
@@ -441,12 +486,11 @@ def test_fetch_nfl_games_build_row_none_skipped(updater):
     mock_cls, _ = _mock_httpx_client()
     with (
         patch("httpx.Client", mock_cls),
-        patch("proedge.pipeline.ingestion.espn_nfl_fetcher._fetch_scoreboard",
-              return_value=[event]),
-        patch("proedge.pipeline.ingestion.espn_nfl_fetcher._fetch_summary",
-              return_value={}),
-        patch("proedge.pipeline.ingestion.espn_nfl_fetcher._build_game_row",
-              return_value=None),
+        patch(
+            "proedge.pipeline.ingestion.espn_nfl_fetcher._fetch_scoreboard", return_value=[event]
+        ),
+        patch("proedge.pipeline.ingestion.espn_nfl_fetcher._fetch_summary", return_value={}),
+        patch("proedge.pipeline.ingestion.espn_nfl_fetcher._build_game_row", return_value=None),
     ):
         result = updater._fetch_nfl_games(date(2026, 1, 15))
     assert result.empty
@@ -454,12 +498,21 @@ def test_fetch_nfl_games_build_row_none_skipped(updater):
 
 # ── _fetch_mlb_games() ────────────────────────────────────────────────────────
 
+
 def _mlb_row() -> dict:
     return {
-        "game_id": "716789", "sport": "mlb", "season": 2026,
-        "game_date": "2026-04-25", "home_team": "NYY", "away_team": "BOS",
-        "home_score": 5, "away_score": 3, "total": 8, "total_line": 8.5,
-        "result_over": 0, "venue": "NYY_stadium",
+        "game_id": "716789",
+        "sport": "mlb",
+        "season": 2026,
+        "game_date": "2026-04-25",
+        "home_team": "NYY",
+        "away_team": "BOS",
+        "home_score": 5,
+        "away_score": 3,
+        "total": 8,
+        "total_line": 8.5,
+        "result_over": 0,
+        "venue": "NYY_stadium",
     }
 
 
@@ -472,16 +525,20 @@ def test_fetch_mlb_games_returns_dataframe(updater):
     mock_cls, _ = _mock_httpx_client()
     with (
         patch("httpx.Client", mock_cls),
-        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_team_map",
-              return_value={"147": "NYY", "111": "BOS"}),
-        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_schedule",
-              return_value=[{"gamePk": 716789}]),
-        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_boxscore",
-              return_value={}),
-        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._build_game_row",
-              return_value=row),
-        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._compute_proxy_lines",
-              return_value=result_df),
+        patch(
+            "proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_team_map",
+            return_value={"147": "NYY", "111": "BOS"},
+        ),
+        patch(
+            "proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_schedule",
+            return_value=[{"gamePk": 716789}],
+        ),
+        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_boxscore", return_value={}),
+        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._build_game_row", return_value=row),
+        patch(
+            "proedge.pipeline.ingestion.mlb_stats_fetcher._compute_proxy_lines",
+            return_value=result_df,
+        ),
         patch("time.sleep"),
     ):
         result = updater._fetch_mlb_games(date(2026, 4, 25))
@@ -494,12 +551,11 @@ def test_fetch_mlb_games_no_game_pk_skipped(updater):
     mock_cls, _ = _mock_httpx_client()
     with (
         patch("httpx.Client", mock_cls),
-        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_team_map",
-              return_value={}),
-        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_schedule",
-              return_value=[{}]),  # no gamePk
-        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_boxscore",
-              return_value={}),
+        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_team_map", return_value={}),
+        patch(
+            "proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_schedule", return_value=[{}]
+        ),  # no gamePk
+        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_boxscore", return_value={}),
     ):
         result = updater._fetch_mlb_games(date(2026, 4, 25))
     assert result.empty
@@ -515,14 +571,13 @@ def test_fetch_mlb_games_build_row_none_skipped(updater):
     mock_cls, _ = _mock_httpx_client()
     with (
         patch("httpx.Client", mock_cls),
-        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_team_map",
-              return_value={}),
-        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_schedule",
-              return_value=[{"gamePk": 999}]),
-        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_boxscore",
-              return_value={}),
-        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._build_game_row",
-              return_value=None),
+        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_team_map", return_value={}),
+        patch(
+            "proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_schedule",
+            return_value=[{"gamePk": 999}],
+        ),
+        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._fetch_boxscore", return_value={}),
+        patch("proedge.pipeline.ingestion.mlb_stats_fetcher._build_game_row", return_value=None),
     ):
         result = updater._fetch_mlb_games(date(2026, 4, 25))
     assert result.empty

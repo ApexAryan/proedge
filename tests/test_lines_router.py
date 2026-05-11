@@ -1,4 +1,5 @@
 """Tests for GET /lines/prizepicks endpoints."""
+
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -57,6 +58,7 @@ def _game_line(**overrides) -> GameLine:
 # GET /lines/prizepicks/{sport}
 # ---------------------------------------------------------------------------
 
+
 def test_lines_invalid_sport_returns_422():
     resp = client.get("/lines/prizepicks/hockey")
     assert resp.status_code == 422
@@ -88,8 +90,14 @@ def test_lines_board_response_structure():
     assert data["game_count"] == 1
     assert data["player_prop_count"] == 1
     assert data["game_line_count"] == 1
-    for key in ("sport", "fetched_at", "game_count", "player_prop_count",
-                "game_line_count", "games"):
+    for key in (
+        "sport",
+        "fetched_at",
+        "game_count",
+        "player_prop_count",
+        "game_line_count",
+        "games",
+    ):
         assert key in data, f"Missing key: {key}"
 
 
@@ -103,8 +111,16 @@ def test_lines_board_game_summary_structure():
     with patch("proedge.api.routers.lines.fetch_board", new=AsyncMock(return_value=board)):
         resp = client.get("/lines/prizepicks/nba")
     game = resp.json()["games"][0]
-    for key in ("game_id", "home_team", "away_team", "sport",
-                "total_line", "spread", "game_lines", "player_projections"):
+    for key in (
+        "game_id",
+        "home_team",
+        "away_team",
+        "sport",
+        "total_line",
+        "spread",
+        "game_lines",
+        "player_projections",
+    ):
         assert key in game, f"Missing game key: {key}"
 
 
@@ -160,7 +176,9 @@ def test_lines_board_prizepicks_http_error_returns_502():
     mock_response.text = "Too Many Requests"
     with patch(
         "proedge.api.routers.lines.fetch_board",
-        new=AsyncMock(side_effect=httpx.HTTPStatusError("429", request=MagicMock(), response=mock_response)),
+        new=AsyncMock(
+            side_effect=httpx.HTTPStatusError("429", request=MagicMock(), response=mock_response)
+        ),
     ):
         resp = client.get("/lines/prizepicks/nba")
     assert resp.status_code == 502
@@ -178,6 +196,7 @@ def test_lines_board_prizepicks_network_error_returns_503():
 # ---------------------------------------------------------------------------
 # GET /lines/prizepicks/{sport}/game/{home}/{away}
 # ---------------------------------------------------------------------------
+
 
 def test_lines_game_not_found_returns_404():
     with patch("proedge.api.routers.lines.fetch_board", new=AsyncMock(return_value=_empty_board())):

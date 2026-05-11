@@ -1,4 +1,5 @@
 """Model performance and drift monitoring endpoints."""
+
 import asyncio
 from datetime import datetime, timezone
 
@@ -28,7 +29,9 @@ def _meta_to_response(meta: dict, sport: str) -> ModelPerformanceResponse:
         accuracy=metrics.get("accuracy"),
         log_loss=metrics.get("log_loss"),
         brier_score=metrics.get("brier_score"),
-        training_games=metrics.get("training_games") or metrics.get("holdout_games") or meta.get("training_games"),
+        training_games=metrics.get("training_games")
+        or metrics.get("holdout_games")
+        or meta.get("training_games"),
         feature_count=meta.get("feature_count"),
         xgb_weight=meta.get("xgb_weight", 0.5),
         lgb_weight=meta.get("lgb_weight", 0.5),
@@ -89,7 +92,8 @@ async def feature_importance(sport: str):
 async def run_drift_check(
     sport: str,
     recent_games: int = Query(
-        200, ge=50,
+        200,
+        ge=50,
         description="Number of most-recent games used as the 'current' window",
     ),
 ):

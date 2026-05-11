@@ -1,4 +1,5 @@
 """End-to-end training pipeline: ingest → features → train → evaluate → register."""
+
 from __future__ import annotations
 
 import argparse
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 HOLDOUT_FRAC = 0.15  # ~last 15% of games for final evaluation
-VAL_FRAC = 0.15      # validation set carved from training portion
+VAL_FRAC = 0.15  # validation set carved from training portion
 MIN_TRAIN_GAMES = 500
 
 
@@ -59,7 +60,9 @@ def train(sport: str, xgb_weight: float = 0.5, trigger_reason: str = "manual") -
 
     logger.info(
         "Split — train: %d | val: %d | holdout: %d",
-        len(X_train), len(X_val), len(X_holdout),
+        len(X_train),
+        len(X_val),
+        len(X_holdout),
     )
 
     # 4. Train ensemble — pass training_games so small datasets get tighter regularization
@@ -101,7 +104,12 @@ def train(sport: str, xgb_weight: float = 0.5, trigger_reason: str = "manual") -
         model=model,
         sport=sport,
         version=version,
-        metrics={**holdout_metrics, "lift_pct": round(lift_pct, 2), "training_games": len(X_train), "holdout_games": len(X_holdout)},
+        metrics={
+            **holdout_metrics,
+            "lift_pct": round(lift_pct, 2),
+            "training_games": len(X_train),
+            "holdout_games": len(X_holdout),
+        },
         feature_names=feature_cols,
         feature_medians=feature_medians,
     )
@@ -143,23 +151,26 @@ def _persist_model_run(
         from sqlalchemy import update as sa_update
         from proedge.db.models import ModelRun
         from proedge.db.session import SyncSessionLocal
+
         with SyncSessionLocal() as session:
             session.execute(
                 sa_update(ModelRun).where(ModelRun.sport == sport).values(is_active=False)
             )
-            session.add(ModelRun(
-                version=version,
-                sport=sport,
-                accuracy=metrics.get("accuracy"),
-                log_loss=metrics.get("log_loss"),
-                brier_score=metrics.get("brier_score"),
-                training_games=metrics.get("training_games"),
-                feature_count=feature_count,
-                xgb_weight=xgb_weight,
-                lgb_weight=1.0 - xgb_weight,
-                model_path=model_path,
-                is_active=True,
-            ))
+            session.add(
+                ModelRun(
+                    version=version,
+                    sport=sport,
+                    accuracy=metrics.get("accuracy"),
+                    log_loss=metrics.get("log_loss"),
+                    brier_score=metrics.get("brier_score"),
+                    training_games=metrics.get("training_games"),
+                    feature_count=feature_count,
+                    xgb_weight=xgb_weight,
+                    lgb_weight=1.0 - xgb_weight,
+                    model_path=model_path,
+                    is_active=True,
+                )
+            )
             session.commit()
         logger.info("ModelRun persisted: %s (%s)", version, sport)
     except Exception as exc:

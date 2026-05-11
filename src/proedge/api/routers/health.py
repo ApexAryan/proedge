@@ -24,6 +24,7 @@ async def health(db: AsyncSession = Depends(get_db)):
 
     # Check which sports have a registered and loadable model
     from proedge.pipeline.models.registry import ModelRegistry
+
     registry = ModelRegistry()
     models_loaded: dict[str, str | None] = {}
     for sport in settings.supported_sports:
@@ -60,4 +61,5 @@ async def readiness(db: AsyncSession = Depends(get_db)):
         return {"ready": True}
     except Exception:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=503, detail="Database unavailable")

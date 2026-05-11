@@ -1,4 +1,5 @@
 """Rolling and EMA stat features — the core of the 200+ signal feature store."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -71,7 +72,11 @@ def add_over_under_streak(df: pd.DataFrame, result_col: str = "result_over") -> 
             pos_list = [df.index.get_loc(p) for p in positions]
             for k in range(1, len(pos_list)):
                 i, i_prev = pos_list[k], pos_list[k - 1]
-                streaks[i] = (max(0, streaks[i_prev]) + 1) if results[i_prev] == 1 else (min(0, streaks[i_prev]) - 1)
+                streaks[i] = (
+                    (max(0, streaks[i_prev]) + 1)
+                    if results[i_prev] == 1
+                    else (min(0, streaks[i_prev]) - 1)
+                )
         df[f"{team_col}_over_streak"] = streaks
 
     return df
@@ -81,8 +86,10 @@ def add_season_progress(df: pd.DataFrame, date_col: str = "game_date") -> pd.Dat
     df = df.copy()
     df["season_progress"] = (
         df.groupby("season")[date_col].transform(
-            lambda s: (s - s.min()).dt.total_seconds()
-            / max(float((s.max() - s.min()).total_seconds()), 1.0)
+            lambda s: (
+                (s - s.min()).dt.total_seconds()
+                / max(float((s.max() - s.min()).total_seconds()), 1.0)
+            )
         )
     ).astype(float)
     return df

@@ -24,15 +24,25 @@ class PredictionRequest(BaseModel):
     wind_speed_mph: float = Field(0.0, ge=0.0, le=100.0, description="Wind speed (NFL/MLB outdoor)")
     temperature_f: float = Field(72.0, ge=-20.0, le=120.0, description="Game-time temperature")
     is_dome: bool = Field(True, description="Indoor/dome stadium (removes weather variance)")
-    altitude_feet: float = Field(0.0, ge=0.0, le=8000.0, description="Stadium altitude (Denver=5280)")
+    altitude_feet: float = Field(
+        0.0, ge=0.0, le=8000.0, description="Stadium altitude (Denver=5280)"
+    )
     is_playoff: bool = Field(False, description="Playoff game (typically lower-scoring)")
 
     # GROUP D — market / sharp signals
     line_movement: float = Field(0.0, ge=-20.0, le=20.0, description="Closing minus opening line")
-    public_over_pct: float = Field(0.5, ge=0.0, le=1.0, description="Fraction of public bets on Over")
-    sharp_over_pct: float = Field(0.5, ge=0.0, le=1.0, description="Fraction of sharp money on Over")
-    ref_foul_rate: float = Field(0.0, ge=-10.0, le=10.0, description="NBA ref fouls/game delta from avg")
-    ump_walk_rate: float = Field(0.0, ge=-5.0, le=5.0, description="MLB ump walks/game delta from avg")
+    public_over_pct: float = Field(
+        0.5, ge=0.0, le=1.0, description="Fraction of public bets on Over"
+    )
+    sharp_over_pct: float = Field(
+        0.5, ge=0.0, le=1.0, description="Fraction of sharp money on Over"
+    )
+    ref_foul_rate: float = Field(
+        0.0, ge=-10.0, le=10.0, description="NBA ref fouls/game delta from avg"
+    )
+    ump_walk_rate: float = Field(
+        0.0, ge=-5.0, le=5.0, description="MLB ump walks/game delta from avg"
+    )
 
     # GROUP E — injury counts
     home_key_players_out: int = Field(0, ge=0, le=15, description="Key home players unavailable")
@@ -104,7 +114,7 @@ class PlayerProjectionResponse(BaseModel):
     start_time: datetime | None
     status: str
     is_promo: bool
-    odds_type: str        # "standard" | "demon" | "goblin"
+    odds_type: str  # "standard" | "demon" | "goblin"
     projection_type: str
     sport: str
 
@@ -121,13 +131,14 @@ class GameLineResponse(BaseModel):
 
 class GameSummaryResponse(BaseModel):
     """All lines and props grouped by game, ready to feed into the model."""
+
     game_id: str
     home_team: str
     away_team: str
     start_time: datetime | None
     sport: str
     total_line: float | None
-    spread: float | None          # positive = home favoured by N pts
+    spread: float | None  # positive = home favoured by N pts
     game_lines: list[GameLineResponse]
     player_projections: list[PlayerProjectionResponse]
     projected_total: float | None  # sum of point props when no explicit total line

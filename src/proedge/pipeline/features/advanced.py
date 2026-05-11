@@ -1,4 +1,5 @@
 """Advanced derived features: pace/efficiency differentials, luck regression, schedule density."""
+
 from __future__ import annotations
 
 import logging
@@ -30,17 +31,17 @@ _MLB_PARK_FACTORS: dict[str, float] = {
     "LAA": 1.00,
     "ATL": 1.00,
     "DET": 1.00,
-    "KC":  1.00,
+    "KC": 1.00,
     "TOR": 1.00,
     "WSH": 1.00,
     "NYM": 0.95,  # Citi Field
     "MIA": 0.95,  # loanDepot Park
-    "TB":  0.93,  # Tropicana Field
+    "TB": 0.93,  # Tropicana Field
     "PIT": 0.94,  # PNC Park
     "OAK": 0.96,  # Oakland Coliseum
-    "SD":  0.96,  # Petco Park
+    "SD": 0.96,  # Petco Park
     "SEA": 0.92,  # T-Mobile Park (marine layer)
-    "SF":  0.92,  # Oracle Park
+    "SF": 0.92,  # Oracle Park
 }
 
 
@@ -61,6 +62,7 @@ def add_advanced_features(df: pd.DataFrame, sport: str) -> pd.DataFrame:
 
 # ── Schedule density ──────────────────────────────────────────────────────────
 
+
 def add_schedule_density(df: pd.DataFrame) -> pd.DataFrame:
     """Games played by each team in the last 3 / 5 days (beyond simple rest days)."""
     df = df.sort_values("game_date").copy()
@@ -76,8 +78,7 @@ def add_schedule_density(df: pd.DataFrame) -> pd.DataFrame:
         dt = pd.Timestamp(row["game_date"])
         home, away = row["home_team"], row["away_team"]
 
-        for team, h3, h5, idx in [(home, home_3d, home_5d, pos),
-                                   (away, away_3d, away_5d, pos)]:
+        for team, h3, h5, idx in [(home, home_3d, home_5d, pos), (away, away_3d, away_5d, pos)]:
             dates = team_dates[team]
             h3[idx] = sum(1 for d in dates if (dt - d).days <= 3)
             h5[idx] = sum(1 for d in dates if (dt - d).days <= 5)
@@ -89,11 +90,12 @@ def add_schedule_density(df: pd.DataFrame) -> pd.DataFrame:
     df["away_games_3d"] = away_3d
     df["home_games_5d"] = home_5d
     df["away_games_5d"] = away_5d
-    df["schedule_density_diff"] = home_3d - away_3d   # negative = home more rested
+    df["schedule_density_diff"] = home_3d - away_3d  # negative = home more rested
     return df
 
 
 # ── Win / loss streak ─────────────────────────────────────────────────────────
+
 
 def add_win_loss_streak(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -128,6 +130,7 @@ def add_win_loss_streak(df: pd.DataFrame) -> pd.DataFrame:
 
 # ── Hot shooting streak ───────────────────────────────────────────────────────
 
+
 def add_hot_shooting_streak(df: pd.DataFrame) -> pd.DataFrame:
     """
     Flag teams running significantly above their season-long shooting average
@@ -138,23 +141,21 @@ def add_hot_shooting_streak(df: pd.DataFrame) -> pd.DataFrame:
         roll3 = f"{side}_trueShooting_roll3_mean"
         roll20 = f"{side}_trueShooting_roll20_mean"
         if roll3 in df.columns and roll20 in df.columns:
-            df[f"{side}_hot_shooting"] = (
-                (df[roll3] - df[roll20] > 0.05).astype(float)
-            )
-            df[f"{side}_cold_shooting"] = (
-                (df[roll20] - df[roll3] > 0.05).astype(float)
-            )
+            df[f"{side}_hot_shooting"] = (df[roll3] - df[roll20] > 0.05).astype(float)
+            df[f"{side}_cold_shooting"] = (df[roll20] - df[roll3] > 0.05).astype(float)
         else:
             logger.debug(
                 "hot_shooting: rolling columns %s / %s not found — defaulting to 0",
-                roll3, roll20,
+                roll3,
+                roll20,
             )
-            df[f"{side}_hot_shooting"]  = 0.0
+            df[f"{side}_hot_shooting"] = 0.0
             df[f"{side}_cold_shooting"] = 0.0
     return df
 
 
 # ── Pace & efficiency composites ──────────────────────────────────────────────
+
 
 def add_pace_efficiency_composites(df: pd.DataFrame, sport: str) -> pd.DataFrame:
     """
@@ -179,7 +180,7 @@ def add_pace_efficiency_composites(df: pd.DataFrame, sport: str) -> pd.DataFrame
         hts = f"home_trueShooting_roll{w}_mean"
         ats = f"away_trueShooting_roll{w}_mean"
         if hts in df.columns and ats in df.columns:
-            df[f"ts_sum_roll{w}"]  = df[hts] + df[ats]
+            df[f"ts_sum_roll{w}"] = df[hts] + df[ats]
             df[f"ts_diff_roll{w}"] = df[hts] - df[ats]
 
         hor = f"home_offensiveRating_roll{w}_mean"
@@ -188,9 +189,7 @@ def add_pace_efficiency_composites(df: pd.DataFrame, sport: str) -> pd.DataFrame
         adr = f"away_defensiveRating_roll{w}_mean"
         if all(c in df.columns for c in [hor, aor, hdr, adr]):
             # Expected total from rating matchup
-            df[f"expected_total_roll{w}"] = (
-                (df[hor] + df[adr]) / 2 + (df[aor] + df[hdr]) / 2
-            )
+            df[f"expected_total_roll{w}"] = (df[hor] + df[adr]) / 2 + (df[aor] + df[hdr]) / 2
             df[f"off_rating_sum_roll{w}"] = df[hor] + df[aor]
             df[f"def_rating_sum_roll{w}"] = df[hdr] + df[adr]
 
@@ -221,6 +220,7 @@ def add_pace_efficiency_composites(df: pd.DataFrame, sport: str) -> pd.DataFrame
 
 # ── Luck / regression factor ──────────────────────────────────────────────────
 
+
 def add_luck_regression(df: pd.DataFrame, sport: str) -> pd.DataFrame:
     """
     Teams scoring well above what their shot profile predicts are 'running hot'
@@ -236,9 +236,12 @@ def add_luck_regression(df: pd.DataFrame, sport: str) -> pd.DataFrame:
 
     needed = [
         "home_points_roll5_mean",
-        "home_fieldGoalAttempts_roll5_mean", "home_fieldGoalPct_roll5_mean",
-        "home_threePointAttempts_roll5_mean", "home_threePointPct_roll5_mean",
-        "home_freeThrowAttempts_roll5_mean", "home_freeThrowPct_roll5_mean",
+        "home_fieldGoalAttempts_roll5_mean",
+        "home_fieldGoalPct_roll5_mean",
+        "home_threePointAttempts_roll5_mean",
+        "home_threePointPct_roll5_mean",
+        "home_freeThrowAttempts_roll5_mean",
+        "home_freeThrowPct_roll5_mean",
     ]
     if not all(c in df.columns for c in needed):
         missing = [c for c in needed if c not in df.columns]
@@ -250,13 +253,13 @@ def add_luck_regression(df: pd.DataFrame, sport: str) -> pd.DataFrame:
         return df
 
     for side in ("home", "away"):
-        pts   = df.get(f"{side}_points_roll5_mean",            pd.Series(113.0, index=df.index))
-        fga   = df.get(f"{side}_fieldGoalAttempts_roll5_mean", pd.Series(87.0,  index=df.index))
-        fgp   = df.get(f"{side}_fieldGoalPct_roll5_mean",      pd.Series(0.47,  index=df.index))
-        fg3a  = df.get(f"{side}_threePointAttempts_roll5_mean",pd.Series(35.0,  index=df.index))
-        fg3p  = df.get(f"{side}_threePointPct_roll5_mean",     pd.Series(0.36,  index=df.index))
-        fta   = df.get(f"{side}_freeThrowAttempts_roll5_mean", pd.Series(22.0,  index=df.index))
-        ftp   = df.get(f"{side}_freeThrowPct_roll5_mean",      pd.Series(0.78,  index=df.index))
+        pts = df.get(f"{side}_points_roll5_mean", pd.Series(113.0, index=df.index))
+        fga = df.get(f"{side}_fieldGoalAttempts_roll5_mean", pd.Series(87.0, index=df.index))
+        fgp = df.get(f"{side}_fieldGoalPct_roll5_mean", pd.Series(0.47, index=df.index))
+        fg3a = df.get(f"{side}_threePointAttempts_roll5_mean", pd.Series(35.0, index=df.index))
+        fg3p = df.get(f"{side}_threePointPct_roll5_mean", pd.Series(0.36, index=df.index))
+        fta = df.get(f"{side}_freeThrowAttempts_roll5_mean", pd.Series(22.0, index=df.index))
+        ftp = df.get(f"{side}_freeThrowPct_roll5_mean", pd.Series(0.78, index=df.index))
 
         expected = 2 * fga * fgp + 1 * fg3a * fg3p + fta * ftp
         df[f"{side}_luck_factor"] = pts - expected
@@ -265,6 +268,7 @@ def add_luck_regression(df: pd.DataFrame, sport: str) -> pd.DataFrame:
 
 
 # ── Situational interactions ──────────────────────────────────────────────────
+
 
 def add_situational_interactions(df: pd.DataFrame, sport: str) -> pd.DataFrame:
     """
@@ -282,12 +286,12 @@ def add_situational_interactions(df: pd.DataFrame, sport: str) -> pd.DataFrame:
     # Wind impact (NFL/MLB: high wind = under)
     if "wind_speed_mph" in df.columns:
         df["wind_under_signal"] = (df["wind_speed_mph"] > 15).astype(float)
-        df["wind_severity"]     = df["wind_speed_mph"] / 30.0   # normalised 0–1+
+        df["wind_severity"] = df["wind_speed_mph"] / 30.0  # normalised 0–1+
 
     # Temperature extremes
     if "temperature_f" in df.columns:
         df["cold_game"] = (df["temperature_f"] < 40).astype(float)
-        df["hot_game"]  = (df["temperature_f"] > 85).astype(float)
+        df["hot_game"] = (df["temperature_f"] > 85).astype(float)
 
     # Sharp money direction (positive = sharp on over, negative = sharp on under)
     if "sharp_over_pct" in df.columns and "public_over_pct" in df.columns:
@@ -302,12 +306,13 @@ def add_situational_interactions(df: pd.DataFrame, sport: str) -> pd.DataFrame:
     if "home_key_players_out" in df.columns:
         df["injury_pts_impact"] = (
             df["home_key_players_out"] - df["away_key_players_out"]
-        ) * -3.0   # negative when home is more injured → Under for home, closer game
+        ) * -3.0  # negative when home is more injured → Under for home, closer game
 
     return df
 
 
 # ── Effective Field Goal % (NBA) ──────────────────────────────────────────────
+
 
 def add_efg_features(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -319,9 +324,9 @@ def add_efg_features(df: pd.DataFrame) -> pd.DataFrame:
     new_cols: dict[str, pd.Series] = {}
     for w in (5, 10):
         for side in ("home", "away"):
-            fgm  = f"{side}_fieldGoalsMade_roll{w}_mean"
+            fgm = f"{side}_fieldGoalsMade_roll{w}_mean"
             fg3m = f"{side}_threesMade_roll{w}_mean"
-            fga  = f"{side}_fieldGoalAttempts_roll{w}_mean"
+            fga = f"{side}_fieldGoalAttempts_roll{w}_mean"
             if all(c in df.columns for c in [fgm, fg3m, fga]):
                 denom = df[fga].replace(0, np.nan)
                 new_cols[f"{side}_efgPct_roll{w}"] = (df[fgm] + 0.5 * df[fg3m]) / denom
@@ -329,7 +334,7 @@ def add_efg_features(df: pd.DataFrame) -> pd.DataFrame:
         h_efg = f"home_efgPct_roll{w}"
         a_efg = f"away_efgPct_roll{w}"
         if h_efg in new_cols and a_efg in new_cols:
-            new_cols[f"efg_sum_roll{w}"]  = new_cols[h_efg] + new_cols[a_efg]
+            new_cols[f"efg_sum_roll{w}"] = new_cols[h_efg] + new_cols[a_efg]
             new_cols[f"efg_diff_roll{w}"] = new_cols[h_efg] - new_cols[a_efg]
 
     if new_cols:
@@ -338,6 +343,7 @@ def add_efg_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ── MLB Park Factors ──────────────────────────────────────────────────────────
+
 
 def add_mlb_park_factors(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -366,6 +372,7 @@ def add_mlb_park_factors(df: pd.DataFrame) -> pd.DataFrame:
 
 # ── Scoring volatility composites ─────────────────────────────────────────────
 
+
 def add_scoring_volatility(df: pd.DataFrame, sport: str) -> pd.DataFrame:
     """
     Rolling std of per-team scoring captures how consistent/unpredictable each
@@ -378,15 +385,19 @@ def add_scoring_volatility(df: pd.DataFrame, sport: str) -> pd.DataFrame:
 
     if score_stat:
         for w in (5, 10):
-            h_std  = f"home_{score_stat}_roll{w}_std"
-            a_std  = f"away_{score_stat}_roll{w}_std"
+            h_std = f"home_{score_stat}_roll{w}_std"
+            a_std = f"away_{score_stat}_roll{w}_std"
             h_mean = f"home_{score_stat}_roll{w}_mean"
             a_mean = f"away_{score_stat}_roll{w}_mean"
             if all(c in df.columns for c in [h_std, a_std, h_mean, a_mean]):
-                new_cols[f"volatility_sum_roll{w}"]  = df[h_std] + df[a_std]
+                new_cols[f"volatility_sum_roll{w}"] = df[h_std] + df[a_std]
                 new_cols[f"volatility_diff_roll{w}"] = df[h_std] - df[a_std]
-                new_cols[f"home_score_cv_roll{w}"] = df[h_std] / df[h_mean].replace(0, np.nan).fillna(1)
-                new_cols[f"away_score_cv_roll{w}"] = df[a_std] / df[a_mean].replace(0, np.nan).fillna(1)
+                new_cols[f"home_score_cv_roll{w}"] = df[h_std] / df[h_mean].replace(
+                    0, np.nan
+                ).fillna(1)
+                new_cols[f"away_score_cv_roll{w}"] = df[a_std] / df[a_mean].replace(
+                    0, np.nan
+                ).fillna(1)
 
     if sport == "nba":
         for w in (5, 10):
@@ -408,6 +419,7 @@ def add_scoring_volatility(df: pd.DataFrame, sport: str) -> pd.DataFrame:
 
 # ── HR per fly ball (MLB) ─────────────────────────────────────────────────────
 
+
 def add_hr_per_flyball(df: pd.DataFrame) -> pd.DataFrame:
     """
     HR/FB rate from rolling means: teams with a high HR-per-fly-ball ratio
@@ -426,7 +438,7 @@ def add_hr_per_flyball(df: pd.DataFrame) -> pd.DataFrame:
         h_col = f"home_hr_per_flyball_roll{w}"
         a_col = f"away_hr_per_flyball_roll{w}"
         if h_col in new_cols and a_col in new_cols:
-            new_cols[f"hr_per_flyball_sum_roll{w}"]  = new_cols[h_col] + new_cols[a_col]
+            new_cols[f"hr_per_flyball_sum_roll{w}"] = new_cols[h_col] + new_cols[a_col]
             new_cols[f"hr_per_flyball_diff_roll{w}"] = new_cols[h_col] - new_cols[a_col]
 
     if new_cols:

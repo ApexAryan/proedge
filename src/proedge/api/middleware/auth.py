@@ -5,6 +5,7 @@ If settings.api_key is set, requests to /predictions, /training, and
 Requests to /health, /metrics, /docs, /openapi.json, /lines, and
 /performance are public.
 """
+
 from __future__ import annotations
 
 from fastapi import Request, Response

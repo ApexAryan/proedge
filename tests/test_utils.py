@@ -1,4 +1,5 @@
 """Tests for proedge.pipeline.ingestion.utils — safe_int, safe_float, compute_proxy_lines."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -11,6 +12,7 @@ from proedge.pipeline.ingestion.utils import compute_proxy_lines, safe_float, sa
 # ---------------------------------------------------------------------------
 # safe_int
 # ---------------------------------------------------------------------------
+
 
 class TestSafeInt:
     def test_integer_string(self):
@@ -46,6 +48,7 @@ class TestSafeInt:
 # safe_float
 # ---------------------------------------------------------------------------
 
+
 class TestSafeFloat:
     def test_float_string(self):
         assert safe_float("3.14") == pytest.approx(3.14)
@@ -76,6 +79,7 @@ class TestSafeFloat:
 # compute_proxy_lines
 # ---------------------------------------------------------------------------
 
+
 def _sport_df(n: int = 20, home_score: int = 112, away_score: int = 108) -> pd.DataFrame:
     rng = np.random.default_rng(5)
     teams = ["BOS", "LAL", "GSW", "MIA"]
@@ -83,11 +87,14 @@ def _sport_df(n: int = 20, home_score: int = 112, away_score: int = 108) -> pd.D
     for i in range(n):
         h = teams[i % len(teams)]
         a = teams[(i + 1) % len(teams)]
-        rows.append({
-            "home_team": h, "away_team": a,
-            "home_score": home_score + int(rng.integers(-5, 5)),
-            "away_score": away_score + int(rng.integers(-5, 5)),
-        })
+        rows.append(
+            {
+                "home_team": h,
+                "away_team": a,
+                "home_score": home_score + int(rng.integers(-5, 5)),
+                "away_score": away_score + int(rng.integers(-5, 5)),
+            }
+        )
     df = pd.DataFrame(rows)
     df["total"] = df["home_score"] + df["away_score"]
     return df
@@ -95,15 +102,22 @@ def _sport_df(n: int = 20, home_score: int = 112, away_score: int = 108) -> pd.D
 
 class TestComputeProxyLines:
     _NBA_KWARGS = dict(
-        clip_lo=180.0, clip_hi=280.0,
-        home_off_default=113.0, home_def_default=113.0,
-        away_off_default=111.0, away_def_default=111.0,
-        noise_std=3.0, home_advantage=1.5,
+        clip_lo=180.0,
+        clip_hi=280.0,
+        home_off_default=113.0,
+        home_def_default=113.0,
+        away_off_default=111.0,
+        away_def_default=111.0,
+        noise_std=3.0,
+        home_advantage=1.5,
     )
     _NFL_KWARGS = dict(
-        clip_lo=28.0, clip_hi=80.0,
-        home_off_default=23.0, home_def_default=21.0,
-        away_off_default=21.0, away_def_default=23.0,
+        clip_lo=28.0,
+        clip_hi=80.0,
+        home_off_default=23.0,
+        home_def_default=21.0,
+        away_off_default=21.0,
+        away_def_default=23.0,
         noise_std=3.5,
     )
 

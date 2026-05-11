@@ -1,4 +1,5 @@
 """Unit tests for proedge.pipeline.training.trainer."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -20,6 +21,7 @@ from proedge.pipeline.training.trainer import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_game_df(n: int = 600, sport: str = "nba") -> pd.DataFrame:
     """Synthetic game DataFrame large enough to satisfy MIN_TRAIN_GAMES."""
     rng = np.random.default_rng(0)
@@ -32,22 +34,24 @@ def _make_game_df(n: int = 600, sport: str = "nba") -> pd.DataFrame:
         away = teams[(i + 2) % len(teams)]
         total = float(rng.normal(224, 18))
         line = total + rng.normal(0, 2)
-        rows.append({
-            "game_id": f"test_{i:05d}",
-            "sport": sport,
-            "season": 2023 + (i // 82),
-            "game_date": datetime(2022, 10, 1) + timedelta(days=i),
-            "home_team": home,
-            "away_team": away,
-            "home_score": int(total / 2 + rng.normal(0, 5)),
-            "away_score": int(total / 2 + rng.normal(0, 5)),
-            "total": total,
-            "total_line": round(line, 1),
-            "result_over": int(total > line),
-            "venue": f"{home}_arena",
-            **{f"home_{s}": float(rng.uniform(90, 130)) for s in stat_cols},
-            **{f"away_{s}": float(rng.uniform(90, 130)) for s in stat_cols},
-        })
+        rows.append(
+            {
+                "game_id": f"test_{i:05d}",
+                "sport": sport,
+                "season": 2023 + (i // 82),
+                "game_date": datetime(2022, 10, 1) + timedelta(days=i),
+                "home_team": home,
+                "away_team": away,
+                "home_score": int(total / 2 + rng.normal(0, 5)),
+                "away_score": int(total / 2 + rng.normal(0, 5)),
+                "total": total,
+                "total_line": round(line, 1),
+                "result_over": int(total > line),
+                "venue": f"{home}_arena",
+                **{f"home_{s}": float(rng.uniform(90, 130)) for s in stat_cols},
+                **{f"away_{s}": float(rng.uniform(90, 130)) for s in stat_cols},
+            }
+        )
     df = pd.DataFrame(rows)
     df["game_date"] = pd.to_datetime(df["game_date"])
     return df
@@ -56,6 +60,7 @@ def _make_game_df(n: int = 600, sport: str = "nba") -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # train() — success path
 # ---------------------------------------------------------------------------
+
 
 class TestTrain:
     def _patched_train(self, df: pd.DataFrame, sport: str = "nba"):
@@ -80,9 +85,17 @@ class TestTrain:
     def test_required_keys_present(self):
         result = self._patched_train(_make_game_df(600))
         expected = {
-            "sport", "version", "model_path", "feature_count",
-            "training_games", "holdout_games",
-            "accuracy", "auc", "log_loss", "brier_score", "lift_pct",
+            "sport",
+            "version",
+            "model_path",
+            "feature_count",
+            "training_games",
+            "holdout_games",
+            "accuracy",
+            "auc",
+            "log_loss",
+            "brier_score",
+            "lift_pct",
         }
         missing = expected - result.keys()
         assert not missing, f"Missing keys: {missing}"
@@ -182,6 +195,7 @@ class TestTrain:
 # _persist_model_run() — DB failure is swallowed
 # ---------------------------------------------------------------------------
 
+
 class TestPersistModelRun:
     def _call(self, session_raises: Exception | None = None):
         mock_session = MagicMock()
@@ -215,6 +229,7 @@ class TestPersistModelRun:
 # check_and_retrain()
 # ---------------------------------------------------------------------------
 
+
 class TestCheckAndRetrain:
     def _dummy_X(self) -> pd.DataFrame:
         rng = np.random.default_rng(1)
@@ -246,9 +261,7 @@ class TestCheckAndRetrain:
         mock_registry = MagicMock()
         mock_registry.load_meta.return_value = {"feature_names": feature_cols}
         mock_model = MagicMock()
-        mock_model.feature_importance.return_value = {
-            "ensemble": {c: 0.2 for c in feature_cols}
-        }
+        mock_model.feature_importance.return_value = {"ensemble": {c: 0.2 for c in feature_cols}}
         mock_registry.load.return_value = mock_model
 
         mock_loader = MagicMock()
@@ -265,8 +278,10 @@ class TestCheckAndRetrain:
         with (
             patch("proedge.pipeline.training.trainer.ModelRegistry", return_value=mock_registry),
             patch("proedge.pipeline.training.trainer.HistoricalLoader", return_value=mock_loader),
-            patch("proedge.pipeline.training.trainer.FeatureStore",
-                  return_value=self._mock_feature_store(feature_cols)),
+            patch(
+                "proedge.pipeline.training.trainer.FeatureStore",
+                return_value=self._mock_feature_store(feature_cols),
+            ),
             patch("proedge.pipeline.training.trainer.DriftDetector", return_value=mock_drift),
             patch("proedge.pipeline.training.trainer.train") as mock_train,
         ):
@@ -280,9 +295,7 @@ class TestCheckAndRetrain:
         mock_registry = MagicMock()
         mock_registry.load_meta.return_value = {"feature_names": feature_cols}
         mock_model = MagicMock()
-        mock_model.feature_importance.return_value = {
-            "ensemble": {c: 0.2 for c in feature_cols}
-        }
+        mock_model.feature_importance.return_value = {"ensemble": {c: 0.2 for c in feature_cols}}
         mock_registry.load.return_value = mock_model
 
         mock_loader = MagicMock()
@@ -299,8 +312,10 @@ class TestCheckAndRetrain:
         with (
             patch("proedge.pipeline.training.trainer.ModelRegistry", return_value=mock_registry),
             patch("proedge.pipeline.training.trainer.HistoricalLoader", return_value=mock_loader),
-            patch("proedge.pipeline.training.trainer.FeatureStore",
-                  return_value=self._mock_feature_store(feature_cols)),
+            patch(
+                "proedge.pipeline.training.trainer.FeatureStore",
+                return_value=self._mock_feature_store(feature_cols),
+            ),
             patch("proedge.pipeline.training.trainer.DriftDetector", return_value=mock_drift),
             patch("proedge.pipeline.training.trainer.train") as mock_train,
         ):
@@ -318,9 +333,7 @@ class TestCheckAndRetrain:
         mock_registry = MagicMock()
         mock_registry.load_meta.return_value = {"feature_names": feature_cols}
         mock_model = MagicMock()
-        mock_model.feature_importance.return_value = {
-            "ensemble": {"pts": 0.6, "reb": 0.4}
-        }
+        mock_model.feature_importance.return_value = {"ensemble": {"pts": 0.6, "reb": 0.4}}
         mock_registry.load.return_value = mock_model
 
         mock_loader = MagicMock()
@@ -339,15 +352,15 @@ class TestCheckAndRetrain:
 
         psi_calls = []
         mock_psi_gauge = MagicMock()
-        mock_psi_gauge.labels.side_effect = lambda **kw: (
-            psi_calls.append(kw) or MagicMock()
-        )
+        mock_psi_gauge.labels.side_effect = lambda **kw: psi_calls.append(kw) or MagicMock()
 
         with (
             patch("proedge.pipeline.training.trainer.ModelRegistry", return_value=mock_registry),
             patch("proedge.pipeline.training.trainer.HistoricalLoader", return_value=mock_loader),
-            patch("proedge.pipeline.training.trainer.FeatureStore",
-                  return_value=self._mock_feature_store(feature_cols)),
+            patch(
+                "proedge.pipeline.training.trainer.FeatureStore",
+                return_value=self._mock_feature_store(feature_cols),
+            ),
             patch("proedge.pipeline.training.trainer.DriftDetector", return_value=mock_drift),
             patch("proedge.pipeline.training.trainer.DRIFT_PSI", mock_psi_gauge),
             patch("proedge.pipeline.training.trainer.train"),

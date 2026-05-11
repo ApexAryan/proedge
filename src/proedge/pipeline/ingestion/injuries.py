@@ -1,4 +1,5 @@
 """Injury data: derive from completed box scores and fetch current game-day status."""
+
 from __future__ import annotations
 
 import logging
@@ -15,53 +16,108 @@ settings = get_settings()
 
 # Player comment substrings that indicate a genuine injury absence
 # (vs "DNP - Coach's Decision" which is a tactical choice)
-_INJURY_KEYWORDS = frozenset({
-    "INJURY", "ILLNESS", "ILL", "SICK", "PERSONAL",
-    "MEDICAL", "DND", "PROTOCOL", "CONCUSSION",
-    "KNEE", "ANKLE", "HAMSTRING", "BACK", "WRIST",
-    "SHOULDER", "HIP", "CALF", "QUAD", "GROIN",
-    "FOOT", "ACHILLES", "ELBOW", "HAND", "FINGER",
-    "REST",  # load management = functionally absent
-})
+_INJURY_KEYWORDS = frozenset(
+    {
+        "INJURY",
+        "ILLNESS",
+        "ILL",
+        "SICK",
+        "PERSONAL",
+        "MEDICAL",
+        "DND",
+        "PROTOCOL",
+        "CONCUSSION",
+        "KNEE",
+        "ANKLE",
+        "HAMSTRING",
+        "BACK",
+        "WRIST",
+        "SHOULDER",
+        "HIP",
+        "CALF",
+        "QUAD",
+        "GROIN",
+        "FOOT",
+        "ACHILLES",
+        "ELBOW",
+        "HAND",
+        "FINGER",
+        "REST",  # load management = functionally absent
+    }
+)
 _NON_INJURY = frozenset({"COACH'S DECISION", "COACHES DECISION"})
 
 # ESPN team roster and teams endpoints
-_ESPN_ROSTER_URL = (
-    "https://site.api.espn.com/apis/site/v2/sports/{path}/teams/{team_id}/roster"
-)
+_ESPN_ROSTER_URL = "https://site.api.espn.com/apis/site/v2/sports/{path}/teams/{team_id}/roster"
 _ESPN_TEAMS_URL = "https://site.api.espn.com/apis/site/v2/sports/{path}/teams"
 _ESPN_SPORT_PATHS = {"nba": "basketball/nba", "nfl": "football/nfl", "mlb": "baseball/mlb"}
 
 # ESPN status names that indicate a meaningful absence
-_INJURY_STATUSES = frozenset({
-    "Out", "Injured Reserve", "Questionable",
-    "Doubtful", "Day-To-Day", "PUP",
-    "Non-Football Injury", "Physically Unable to Perform",
-    "Injured List", "10-Day IL", "15-Day IL", "60-Day IL",
-})
+_INJURY_STATUSES = frozenset(
+    {
+        "Out",
+        "Injured Reserve",
+        "Questionable",
+        "Doubtful",
+        "Day-To-Day",
+        "PUP",
+        "Non-Football Injury",
+        "Physically Unable to Perform",
+        "Injured List",
+        "10-Day IL",
+        "15-Day IL",
+        "60-Day IL",
+    }
+)
 # Statuses we count as "key player out" in the model feature
-_KEY_IMPACT_STATUSES = frozenset({
-    "Out", "Injured Reserve", "Injured List",
-    "10-Day IL", "15-Day IL", "60-Day IL",
-    "Doubtful",
-})
+_KEY_IMPACT_STATUSES = frozenset(
+    {
+        "Out",
+        "Injured Reserve",
+        "Injured List",
+        "10-Day IL",
+        "15-Day IL",
+        "60-Day IL",
+        "Doubtful",
+    }
+)
 
 # Legacy impact scoring (kept for backward compat with old InjuryIngester callers)
 STATUS_IMPACT: dict[str, float] = {
-    "out": 1.0, "doubtful": 0.75, "questionable": 0.40,
-    "probable": 0.10, "active": 0.0,
+    "out": 1.0,
+    "doubtful": 0.75,
+    "questionable": 0.40,
+    "probable": 0.10,
+    "active": 0.0,
 }
 POSITION_IMPACT: dict[str, dict[str, float]] = {
     "nfl": {
-        "QB": 0.90, "WR": 0.45, "RB": 0.40, "TE": 0.35,
-        "OL": 0.30, "CB": 0.35, "DE": 0.40, "LB": 0.30, "S": 0.25,
+        "QB": 0.90,
+        "WR": 0.45,
+        "RB": 0.40,
+        "TE": 0.35,
+        "OL": 0.30,
+        "CB": 0.35,
+        "DE": 0.40,
+        "LB": 0.30,
+        "S": 0.25,
     },
     "nba": {
-        "PG": 0.75, "SG": 0.65, "SF": 0.70, "PF": 0.65, "C": 0.60,
+        "PG": 0.75,
+        "SG": 0.65,
+        "SF": 0.70,
+        "PF": 0.65,
+        "C": 0.60,
     },
     "mlb": {
-        "SP": 0.80, "RP": 0.30, "C": 0.50, "1B": 0.45, "2B": 0.50,
-        "3B": 0.55, "SS": 0.60, "OF": 0.45,
+        "SP": 0.80,
+        "RP": 0.30,
+        "C": 0.50,
+        "1B": 0.45,
+        "2B": 0.50,
+        "3B": 0.55,
+        "SS": 0.60,
+        "OF": 0.45,
     },
 }
 
@@ -71,7 +127,7 @@ class InjuredPlayer:
     name: str
     team: str
     status: str
-    is_key: bool   # Out/IR/Doubtful = key impact; Questionable = minor
+    is_key: bool  # Out/IR/Doubtful = key impact; Questionable = minor
     comment: str = ""
 
 
@@ -92,6 +148,7 @@ class TeamInjuryReport:
 
 
 # ── Derive injuries from a completed box score ────────────────────────────────
+
 
 def injuries_from_boxscore(
     team_players: list[dict[str, Any]],
@@ -124,14 +181,20 @@ def injuries_from_boxscore(
                 f"{player.get('firstName', '')} {player.get('familyName', '')}".strip()
                 or player.get("nameI", "Unknown")
             )
-            report.injured.append(InjuredPlayer(
-                name=name, team=team_abbr,
-                status="DNP", is_key=is_key, comment=comment,
-            ))
+            report.injured.append(
+                InjuredPlayer(
+                    name=name,
+                    team=team_abbr,
+                    status="DNP",
+                    is_key=is_key,
+                    comment=comment,
+                )
+            )
     return report
 
 
 # ── Fetch current game-day status from ESPN ──────────────────────────────────
+
 
 class InjuryFetcher:
     """
@@ -167,10 +230,14 @@ class InjuryFetcher:
                             status_name = player.get("status", {}).get("name", "Active")
                             if status_name in _INJURY_STATUSES:
                                 is_key = status_name in _KEY_IMPACT_STATUSES
-                                report.injured.append(InjuredPlayer(
-                                    name=player.get("displayName", "Unknown"),
-                                    team=abbr, status=status_name, is_key=is_key,
-                                ))
+                                report.injured.append(
+                                    InjuredPlayer(
+                                        name=player.get("displayName", "Unknown"),
+                                        team=abbr,
+                                        status=status_name,
+                                        is_key=is_key,
+                                    )
+                                )
                     reports[abbr] = report
                     time.sleep(0.05)
                 except Exception as exc:
@@ -179,14 +246,20 @@ class InjuryFetcher:
         total_out = sum(r.key_players_out for r in reports.values())
         logger.info(
             "ESPN injury report %s: %d teams checked, %d key players out",
-            sport.upper(), len(reports), total_out,
+            sport.upper(),
+            len(reports),
+            total_out,
         )
         return reports
 
     def key_players_out(self, sport: str, team: str) -> int:
         """Best-effort: key players unavailable for a single team right now."""
         try:
-            return self.fetch_all(sport).get(team.upper(), TeamInjuryReport(team, sport)).key_players_out
+            return (
+                self.fetch_all(sport)
+                .get(team.upper(), TeamInjuryReport(team, sport))
+                .key_players_out
+            )
         except Exception as exc:
             logger.warning("Injury fetch failed for %s %s: %s", sport, team, exc)
             return 0
@@ -196,16 +269,8 @@ class InjuryFetcher:
             return self._team_id_cache[sport]
         try:
             resp = httpx.get(_ESPN_TEAMS_URL.format(path=path), timeout=self.timeout)
-            teams_raw = (
-                resp.json()
-                .get("sports", [{}])[0]
-                .get("leagues", [{}])[0]
-                .get("teams", [])
-            )
-            mapping = {
-                t["team"]["abbreviation"]: t["team"]["id"]
-                for t in teams_raw if "team" in t
-            }
+            teams_raw = resp.json().get("sports", [{}])[0].get("leagues", [{}])[0].get("teams", [])
+            mapping = {t["team"]["abbreviation"]: t["team"]["id"] for t in teams_raw if "team" in t}
             self._team_id_cache[sport] = mapping
             return mapping
         except Exception as exc:
@@ -215,15 +280,12 @@ class InjuryFetcher:
 
 # ── Legacy InjuryIngester (backward compat) ───────────────────────────────────
 
+
 class InjuryIngester:
     """Kept for backward compatibility — wraps InjuryFetcher."""
 
-    def compute_team_injury_impact(
-        self, team_id: str, injury_reports: list[dict]
-    ) -> float:
+    def compute_team_injury_impact(self, team_id: str, injury_reports: list[dict]) -> float:
         total = sum(
-            r.get("impact_score", 0.0)
-            for r in injury_reports
-            if r.get("team_id") == team_id
+            r.get("impact_score", 0.0) for r in injury_reports if r.get("team_id") == team_id
         )
         return min(total, 1.0)

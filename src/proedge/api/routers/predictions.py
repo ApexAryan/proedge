@@ -1,4 +1,5 @@
 """Prediction endpoints — the primary API surface."""
+
 from __future__ import annotations
 
 import logging
@@ -44,9 +45,7 @@ def _get_model(sport: str):
 
 
 @router.post("", response_model=PredictionResponse, status_code=status.HTTP_201_CREATED)
-async def create_prediction(
-    req: PredictionRequest, db: AsyncSession = Depends(get_db)
-):
+async def create_prediction(req: PredictionRequest, db: AsyncSession = Depends(get_db)):
     t0 = time.perf_counter()
     sport = req.sport.value
 
@@ -64,13 +63,16 @@ async def create_prediction(
 
     from proedge.config import get_settings
     from proedge.pipeline.ingestion.odds_fetcher import OddsFetcher
+
     _settings = get_settings()
     if _settings.odds_api_key:
         try:
             cached = _odds_cache.get(sport)
             now = time.time()
             if cached is None or (now - cached[0]) > _ODDS_CACHE_TTL:
-                board = OddsFetcher(api_key=_settings.odds_api_key, timeout=5.0).fetch_game_odds(sport)
+                board = OddsFetcher(api_key=_settings.odds_api_key, timeout=5.0).fetch_game_odds(
+                    sport
+                )
                 _odds_cache[sport] = (now, board)
             else:
                 board = cached[1]
@@ -79,7 +81,9 @@ async def create_prediction(
             away_lower = req.away_team.lower()
             for game in board:
                 ht, at = game.home_team.lower(), game.away_team.lower()
-                if (home_lower in ht or ht in home_lower) and (away_lower in at or at in away_lower):
+                if (home_lower in ht or ht in home_lower) and (
+                    away_lower in at or at in away_lower
+                ):
                     if game.total_line is not None:
                         req = req.model_copy(update={"total_line": game.total_line})
                     break
@@ -92,10 +96,15 @@ async def create_prediction(
     if home_out == 0 and away_out == 0:
         try:
             from proedge.pipeline.ingestion.injuries import InjuryFetcher
+
             fetcher = InjuryFetcher(timeout=5.0)
             reports = fetcher.fetch_all(sport)
-            home_out = reports.get(req.home_team, type("_", (), {"key_players_out": 0})()).key_players_out
-            away_out = reports.get(req.away_team, type("_", (), {"key_players_out": 0})()).key_players_out
+            home_out = reports.get(
+                req.home_team, type("_", (), {"key_players_out": 0})()
+            ).key_players_out
+            away_out = reports.get(
+                req.away_team, type("_", (), {"key_players_out": 0})()
+            ).key_players_out
         except Exception:
             pass  # injury fetch is best-effort; fall back to 0
 
@@ -109,7 +118,9 @@ async def create_prediction(
     if missing:
         logger.warning(
             "sport=%s: %d features present in training but missing at inference: %s",
-            sport, len(missing), sorted(missing)[:10],
+            sport,
+            len(missing),
+            sorted(missing)[:10],
         )
         try:
             INFERENCE_FEATURE_MISSING.labels(sport=sport).inc(len(missing))
@@ -162,17 +173,19 @@ async def create_prediction(
 
     # Fire alert if confidence exceeds threshold; persist to DB for durability
     try:
-        alert = get_alert_manager().evaluate({
-            "sport": sport,
-            "home_team": req.home_team,
-            "away_team": req.away_team,
-            "game_date": str(req.game_date),
-            "prob_over": pred["prob_over"],
-            "prob_under": pred["prob_under"],
-            "confidence": pred["confidence"],
-            "total_line": req.total_line,
-            "predicted_direction": direction,
-        })
+        alert = get_alert_manager().evaluate(
+            {
+                "sport": sport,
+                "home_team": req.home_team,
+                "away_team": req.away_team,
+                "game_date": str(req.game_date),
+                "prob_over": pred["prob_over"],
+                "prob_under": pred["prob_under"],
+                "confidence": pred["confidence"],
+                "total_line": req.total_line,
+                "predicted_direction": direction,
+            }
+        )
         if alert is not None:
             alert_repo = AlertRepository(db)
             await alert_repo.create(
@@ -291,6 +304,7 @@ async def get_recent_alerts(limit: int = 50, db: AsyncSession = Depends(get_db))
 @router.get("/{game_id}", response_model=list[PredictionResponse])
 async def get_predictions_for_game(game_id: str, db: AsyncSession = Depends(get_db)):
     import uuid as _uuid
+
     try:
         gid = _uuid.UUID(game_id)
     except ValueError:
@@ -334,6 +348,7 @@ async def settle_prediction(
 ):
     """Record final score and closing line; compute CLV and correctness."""
     import uuid as _uuid
+
     try:
         pid = _uuid.UUID(prediction_id)
     except ValueError:
@@ -357,7 +372,11 @@ async def settle_prediction(
 
     result_over = req.actual_total > req.closing_line
     is_correct = (pred.predicted_direction == "over") == result_over
-    clv = (req.closing_line - bet_line) if pred.predicted_direction == "over" else (bet_line - req.closing_line)
+    clv = (
+        (req.closing_line - bet_line)
+        if pred.predicted_direction == "over"
+        else (bet_line - req.closing_line)
+    )
 
     clv_desc = f"+{clv:.1f}" if clv >= 0 else f"{clv:.1f}"
     return SettleResponse(
@@ -389,8 +408,8 @@ def _build_inference_features(
     row: dict[str, float] = {f: medians.get(f, 0.0) for f in feature_names}
 
     # Core game context
-    row["total_line"]      = req.total_line
-    row["home_advantage"]  = 1.0
+    row["total_line"] = req.total_line
+    row["home_advantage"] = 1.0
 
     if req.home_rest_days is not None:
         row["home_rest_days"] = float(req.home_rest_days)
@@ -399,29 +418,29 @@ def _build_inference_features(
 
     if req.home_rest_days is not None and req.away_rest_days is not None:
         row["home_rest_advantage"] = float(req.home_rest_days - req.away_rest_days)
-        row["home_back_to_back"]   = float(req.home_rest_days <= 1)
-        row["away_back_to_back"]   = float(req.away_rest_days <= 1)
+        row["home_back_to_back"] = float(req.home_rest_days <= 1)
+        row["away_back_to_back"] = float(req.away_rest_days <= 1)
 
     # GROUP C — situational context
-    row["wind_speed_mph"]   = req.wind_speed_mph
-    row["temperature_f"]    = req.temperature_f
-    row["is_dome"]          = float(req.is_dome)
-    row["altitude_feet"]    = req.altitude_feet
-    row["is_playoff"]       = float(req.is_playoff)
-    row["altitude_boost"]   = req.altitude_feet / 5280.0
-    row["dome_flag"]        = float(req.is_dome)
+    row["wind_speed_mph"] = req.wind_speed_mph
+    row["temperature_f"] = req.temperature_f
+    row["is_dome"] = float(req.is_dome)
+    row["altitude_feet"] = req.altitude_feet
+    row["is_playoff"] = float(req.is_playoff)
+    row["altitude_boost"] = req.altitude_feet / 5280.0
+    row["dome_flag"] = float(req.is_dome)
     row["wind_under_signal"] = float(req.wind_speed_mph > 15)
-    row["wind_severity"]    = req.wind_speed_mph / 30.0
-    row["cold_game"]        = float(req.temperature_f < 40)
-    row["hot_game"]         = float(req.temperature_f > 85)
+    row["wind_severity"] = req.wind_speed_mph / 30.0
+    row["cold_game"] = float(req.temperature_f < 40)
+    row["hot_game"] = float(req.temperature_f > 85)
 
     # GROUP D — market / sharp signals
-    row["line_movement"]       = req.line_movement
-    row["public_over_pct"]     = req.public_over_pct
-    row["sharp_over_pct"]      = req.sharp_over_pct
-    row["ref_foul_rate"]       = req.ref_foul_rate
-    row["ump_walk_rate"]       = req.ump_walk_rate
-    row["sharp_vs_public"]     = req.sharp_over_pct - req.public_over_pct
+    row["line_movement"] = req.line_movement
+    row["public_over_pct"] = req.public_over_pct
+    row["sharp_over_pct"] = req.sharp_over_pct
+    row["ref_foul_rate"] = req.ref_foul_rate
+    row["ump_walk_rate"] = req.ump_walk_rate
+    row["sharp_vs_public"] = req.sharp_over_pct - req.public_over_pct
     row["line_move_magnitude"] = abs(req.line_movement)
     row["line_move_direction"] = float(np.sign(req.line_movement))
 
@@ -430,7 +449,7 @@ def _build_inference_features(
     a_out = max(req.away_key_players_out, away_key_out)
     row["home_key_players_out"] = float(h_out)
     row["away_key_players_out"] = float(a_out)
-    row["injury_pts_impact"]    = (h_out - a_out) * -3.0
+    row["injury_pts_impact"] = (h_out - a_out) * -3.0
 
     # Legacy
     row["home_injury_impact"] = req.home_injury_impact

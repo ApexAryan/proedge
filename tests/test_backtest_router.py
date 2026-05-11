@@ -1,4 +1,5 @@
 """Tests for POST /backtest/{sport} endpoint."""
+
 import pytest
 from unittest.mock import patch
 
@@ -50,6 +51,7 @@ def _result(sport: str = "nba", **overrides) -> BacktestResult:
 # Sport validation
 # ---------------------------------------------------------------------------
 
+
 def test_backtest_invalid_sport():
     resp = client.post("/backtest/hockey")
     assert resp.status_code == 422
@@ -58,6 +60,7 @@ def test_backtest_invalid_sport():
 # ---------------------------------------------------------------------------
 # Query-parameter validation
 # ---------------------------------------------------------------------------
+
 
 def test_backtest_n_folds_too_low():
     resp = client.post("/backtest/nba?n_folds=1")
@@ -78,6 +81,7 @@ def test_backtest_min_confidence_out_of_range():
 # Error propagation
 # ---------------------------------------------------------------------------
 
+
 def test_backtest_no_data_returns_404():
     with patch("proedge.pipeline.backtesting.backtester.Backtester") as MockBT:
         MockBT.return_value.run.side_effect = FileNotFoundError("no parquet")
@@ -96,15 +100,29 @@ def test_backtest_internal_error_returns_500():
 # Success path — response structure
 # ---------------------------------------------------------------------------
 
+
 def test_backtest_returns_200_and_top_level_fields():
     with patch("proedge.pipeline.backtesting.backtester.Backtester") as MockBT:
         MockBT.return_value.run.return_value = _result()
         resp = client.post("/backtest/nba")
     assert resp.status_code == 200
     data = resp.json()
-    for key in ("sport", "n_folds", "min_confidence", "total_games", "total_bets",
-                "overall_accuracy", "overall_auc", "overall_roi_flat", "overall_roi_kelly",
-                "sharpe_ratio", "max_drawdown", "folds", "calibration", "message"):
+    for key in (
+        "sport",
+        "n_folds",
+        "min_confidence",
+        "total_games",
+        "total_bets",
+        "overall_accuracy",
+        "overall_auc",
+        "overall_roi_flat",
+        "overall_roi_kelly",
+        "sharpe_ratio",
+        "max_drawdown",
+        "folds",
+        "calibration",
+        "message",
+    ):
         assert key in data, f"Missing top-level key: {key}"
 
 
@@ -114,8 +132,19 @@ def test_backtest_fold_fields():
         resp = client.post("/backtest/nba")
     folds = resp.json()["folds"]
     assert len(folds) == 1
-    for key in ("fold", "start_date", "end_date", "n_games", "accuracy", "auc",
-                "log_loss", "brier_score", "roi_flat", "roi_kelly", "edge_mean"):
+    for key in (
+        "fold",
+        "start_date",
+        "end_date",
+        "n_games",
+        "accuracy",
+        "auc",
+        "log_loss",
+        "brier_score",
+        "roi_flat",
+        "roi_kelly",
+        "edge_mean",
+    ):
         assert key in folds[0], f"Missing fold key: {key}"
 
 

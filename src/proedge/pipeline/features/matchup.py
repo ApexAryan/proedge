@@ -1,4 +1,5 @@
 """Matchup-adjusted features: opponent defensive quality and H2H history."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -26,9 +27,12 @@ def add_matchup_features(
         for col in stat_cols:
             away_col = f"away_{col}"
             if away_col in df.columns:
-                allowed = df.loc[mask_home, away_col].shift(1).rolling(
-                    opponent_window, min_periods=1
-                ).mean()
+                allowed = (
+                    df.loc[mask_home, away_col]
+                    .shift(1)
+                    .rolling(opponent_window, min_periods=1)
+                    .mean()
+                )
                 opp_allowed[team][col] = allowed
 
     # League averages per stat
@@ -51,9 +55,9 @@ def add_matchup_features(
             mask = df["home_team"] == team
             away_col = f"away_{col}"
             if away_col in df.columns:
-                allowed_mean = df.loc[mask, away_col].shift(1).rolling(
-                    opponent_window, min_periods=1
-                ).mean()
+                allowed_mean = (
+                    df.loc[mask, away_col].shift(1).rolling(opponent_window, min_periods=1).mean()
+                )
                 df.loc[mask, f"opp_def_{col}_ratio"] = allowed_mean / avg
 
     # H2H head-to-head over rate

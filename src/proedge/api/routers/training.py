@@ -1,4 +1,5 @@
 """Training management endpoints: manual daily updates and force retrains."""
+
 from __future__ import annotations
 
 import asyncio
@@ -25,6 +26,7 @@ def _lock_for(sport: str) -> asyncio.Lock:
 
 
 # ── Response schemas ──────────────────────────────────────────────────────────
+
 
 class UpdateResponse(BaseModel):
     sport: str
@@ -61,6 +63,7 @@ class TrainingStatusResponse(BaseModel):
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
+
 @router.post(
     "/update/{sport}",
     response_model=UpdateResponse,
@@ -95,6 +98,7 @@ async def run_daily_update(
             raise HTTPException(status_code=422, detail=f"Invalid date format: {target_date}")
 
     from proedge.pipeline.ingestion.daily_updater import DailyUpdater
+
     updater = DailyUpdater(sport, auto_retrain=auto_retrain)
 
     loop = asyncio.get_event_loop()
@@ -138,6 +142,7 @@ async def force_retrain(sport: str):
 
     async with lock:
         from proedge.pipeline.training.trainer import train
+
         loop = asyncio.get_running_loop()
         try:
             metrics = await loop.run_in_executor(None, train, sport)
@@ -174,6 +179,7 @@ async def get_training_status(sport: str):
     historical_games = _count_historical(sport)
 
     from proedge.pipeline.models.registry import ModelRegistry
+
     try:
         meta = ModelRegistry().load_meta(sport)
         retrain_version = meta.get("version")
@@ -207,8 +213,10 @@ async def get_all_training_status():
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _validate_sport(sport: str):
     from proedge.config import get_settings
+
     valid = get_settings().supported_sports
     if sport not in valid:
         raise HTTPException(
@@ -219,6 +227,7 @@ def _validate_sport(sport: str):
 
 def _save_update_status(sport: str, data: dict):
     import json
+
     _STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
     existing: dict = {}
     if _STATUS_FILE.exists():
@@ -226,13 +235,16 @@ def _save_update_status(sport: str, data: dict):
             existing = json.loads(_STATUS_FILE.read_text())
         except Exception as exc:
             logger.warning("Could not read update status file, resetting: %s", exc)
-    existing[sport] = {k: str(v) if not isinstance(v, (int, float, bool, type(None))) else v
-                       for k, v in data.items()}
+    existing[sport] = {
+        k: str(v) if not isinstance(v, (int, float, bool, type(None))) else v
+        for k, v in data.items()
+    }
     _STATUS_FILE.write_text(json.dumps(existing, indent=2))
 
 
 def _load_update_status(sport: str) -> dict:
     import json
+
     if _STATUS_FILE.exists():
         try:
             return json.loads(_STATUS_FILE.read_text()).get(sport, {})
@@ -243,6 +255,7 @@ def _load_update_status(sport: str) -> dict:
 
 def _count_historical(sport: str) -> int | None:
     import pandas as pd
+
     path = Path(f"./data/{sport}_historical.parquet")
     if path.exists():
         try:
@@ -256,6 +269,7 @@ def _reload_model_cache(sport: str):
     try:
         from proedge.api.routers.predictions import _model_cache
         from proedge.pipeline.models.registry import ModelRegistry
+
         _model_cache[sport] = ModelRegistry().load(sport)
         logger.info("Reloaded %s model into prediction cache", sport.upper())
     except Exception as exc:

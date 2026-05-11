@@ -1,8 +1,14 @@
 import uuid
 
 from sqlalchemy import (
-    Boolean, Column, DateTime, Float, ForeignKey,
-    Integer, String, func,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    func,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, relationship
@@ -52,7 +58,7 @@ class Prediction(Base):
     latency_ms = Column(Float, nullable=True)
     actual_total = Column(Float, nullable=True)
     closing_line = Column(Float, nullable=True)
-    clv = Column(Float, nullable=True)       # closing line value: positive = beat the close
+    clv = Column(Float, nullable=True)  # closing line value: positive = beat the close
     settled_at = Column(DateTime(timezone=True), nullable=True)
 
     game = relationship("Game", back_populates="predictions")
@@ -118,7 +124,7 @@ class AlertRecord(Base):
     home_team = Column(String(50), nullable=False)
     away_team = Column(String(50), nullable=False)
     game_date = Column(String(20), nullable=False)
-    direction = Column(String(10), nullable=False)   # "over" | "under"
+    direction = Column(String(10), nullable=False)  # "over" | "under"
     prob_over = Column(Float, nullable=False)
     confidence = Column(Float, nullable=False)
     edge = Column(Float, nullable=False)

@@ -1,4 +1,5 @@
 """Feature store: orchestrates all feature engineering into a versioned, cached output."""
+
 from __future__ import annotations
 
 import hashlib
@@ -22,9 +23,18 @@ logger = logging.getLogger(__name__)
 
 # Features excluded from model input
 _DROP_COLS = {
-    "game_id", "sport", "game_date", "home_team", "away_team",
-    "home_score", "away_score", "total", "result_over", "venue",
-    "season", "external_id",
+    "game_id",
+    "sport",
+    "game_date",
+    "home_team",
+    "away_team",
+    "home_score",
+    "away_score",
+    "total",
+    "result_over",
+    "venue",
+    "season",
+    "external_id",
 }
 
 
@@ -46,6 +56,7 @@ class FeatureStore:
             logger.info("Loading features from cache: %s", cache_path)
             try:
                 from proedge.monitoring.metrics import FEATURE_CACHE_HITS
+
                 FEATURE_CACHE_HITS.labels(result="hit").inc()
             except Exception:
                 pass
@@ -53,6 +64,7 @@ class FeatureStore:
 
         try:
             from proedge.monitoring.metrics import FEATURE_CACHE_HITS
+
             FEATURE_CACHE_HITS.labels(result="miss").inc()
         except Exception:
             pass
@@ -62,7 +74,9 @@ class FeatureStore:
         features.to_parquet(cache_path, index=False)
         logger.info(
             "Feature matrix: %d rows × %d columns — saved to %s",
-            len(features), features.shape[1], cache_path,
+            len(features),
+            features.shape[1],
+            cache_path,
         )
         return features
 

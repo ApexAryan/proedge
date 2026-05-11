@@ -1,4 +1,5 @@
 """Lines router — PrizePicks spreads, totals, and player projections."""
+
 from __future__ import annotations
 
 import logging
@@ -86,14 +87,20 @@ async def get_prizepicks_game(sport: str, home_team: str, away_team: str):
 
     # Match by abbreviation or partial name (case-insensitive)
     matched_props = [
-        p for p in board.player_projections
-        if home_up in p.home_team.upper() or home_up in p.away_team.upper()
-        or away_up in p.home_team.upper() or away_up in p.away_team.upper()
+        p
+        for p in board.player_projections
+        if home_up in p.home_team.upper()
+        or home_up in p.away_team.upper()
+        or away_up in p.home_team.upper()
+        or away_up in p.away_team.upper()
     ]
     matched_lines = [
-        gl for gl in board.game_lines
-        if home_up in gl.home_team.upper() or home_up in gl.away_team.upper()
-        or away_up in gl.home_team.upper() or away_up in gl.away_team.upper()
+        gl
+        for gl in board.game_lines
+        if home_up in gl.home_team.upper()
+        or home_up in gl.away_team.upper()
+        or away_up in gl.home_team.upper()
+        or away_up in gl.away_team.upper()
     ]
 
     if not matched_props and not matched_lines:
@@ -118,6 +125,7 @@ async def get_prizepicks_game(sport: str, home_team: str, away_team: str):
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
+
 def _build_response(
     board: PrizePicksBoard,
     *,
@@ -125,11 +133,16 @@ def _build_response(
     status_filter: str,
 ) -> PrizePicksBoardResponse:
     props = [
-        p for p in board.player_projections
+        p
+        for p in board.player_projections
         if (include_promos or not p.is_promo)
-        and (status_filter == "all" or p.status == status_filter or
-             # treat "pre_game" as the normal pre-game state
-             (status_filter == "pre_game" and p.status in ("pre_game", "normal")))
+        and (
+            status_filter == "all"
+            or p.status == status_filter
+            or
+            # treat "pre_game" as the normal pre-game state
+            (status_filter == "pre_game" and p.status in ("pre_game", "normal"))
+        )
     ]
 
     # Group props and game lines by game_id
@@ -201,8 +214,7 @@ def _game_summary(
             sport, "Points"
         )
         standard_pts = [
-            p for p in props
-            if p.stat_type == point_stat and p.odds_type not in ("demon", "goblin")
+            p for p in props if p.stat_type == point_stat and p.odds_type not in ("demon", "goblin")
         ]
         if standard_pts:
             # Group by player, take median line per player

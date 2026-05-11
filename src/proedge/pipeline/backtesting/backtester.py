@@ -1,4 +1,5 @@
 """Walk-forward backtesting — replay historical predictions to measure edge and ROI."""
+
 from __future__ import annotations
 
 import logging
@@ -18,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 # Payoff ratio at standard -110 juice: win $90.91 on a $100 bet
 _JUICE_PAYOFF = 100 / 110  # ≈ 0.909 1
-_BET_SIZE = 100.0          # flat-bet unit in dollars
-_KELLY_CAP = 0.25          # quarter-Kelly cap
+_BET_SIZE = 100.0  # flat-bet unit in dollars
+_KELLY_CAP = 0.25  # quarter-Kelly cap
 
 
 @dataclass
@@ -32,9 +33,9 @@ class FoldResult:
     auc: float
     log_loss: float
     brier_score: float
-    roi_flat: float          # ROI assuming $100 flat bet at -110 juice per game
-    roi_kelly: float         # ROI using (capped) Kelly fraction sizing
-    edge_mean: float         # mean |prob_over - 0.5| (average model confidence)
+    roi_flat: float  # ROI assuming $100 flat bet at -110 juice per game
+    roi_kelly: float  # ROI using (capped) Kelly fraction sizing
+    edge_mean: float  # mean |prob_over - 0.5| (average model confidence)
     high_conf_accuracy: float  # accuracy on games where confidence >= 0.60
 
 
@@ -44,13 +45,13 @@ class BacktestResult:
     n_folds: int
     min_confidence: float
     total_games: int
-    total_bets: int           # games where confidence >= min_confidence
+    total_bets: int  # games where confidence >= min_confidence
     overall_accuracy: float
     overall_auc: float
     overall_roi_flat: float
     overall_roi_kelly: float
-    sharpe_ratio: float       # of per-game returns (annualised × √252)
-    max_drawdown: float       # max peak-to-trough decline in cumulative P&L
+    sharpe_ratio: float  # of per-game returns (annualised × √252)
+    max_drawdown: float  # max peak-to-trough decline in cumulative P&L
     status: str = "complete"  # "complete" | "no_folds_completed" | "insufficient_data"
     folds: list[FoldResult] = field(default_factory=list)
     calibration: dict[str, list[float]] = field(default_factory=dict)
@@ -193,9 +194,7 @@ class Backtester:
             conf_scores = np.abs(probs - 0.5) * 2  # 0=coin-flip, 1=certain
             bet_mask = conf_scores >= min_confidence
 
-            flat_returns, kelly_returns = self._simulate_betting(
-                probs[bet_mask], labels[bet_mask]
-            )
+            flat_returns, kelly_returns = self._simulate_betting(probs[bet_mask], labels[bet_mask])
             all_per_game_returns.extend(flat_returns)
 
             roi_flat = (
@@ -304,8 +303,7 @@ class Backtester:
         path = self.data_dir / f"{self.sport}_historical.parquet"
         if not path.exists():
             raise FileNotFoundError(
-                f"Historical data not found: {path}. "
-                "Run the ingestion pipeline first."
+                f"Historical data not found: {path}. Run the ingestion pipeline first."
             )
         df = pd.read_parquet(path)
         df = df.dropna(subset=["result_over"])
@@ -344,9 +342,7 @@ class Backtester:
             f = (p_bet * (b + 1) - 1) / b
             f = max(0.0, min(f, _KELLY_CAP))
             kelly_stake = f * _BET_SIZE
-            kelly_returns.append(
-                kelly_stake * _JUICE_PAYOFF if won else -kelly_stake
-            )
+            kelly_returns.append(kelly_stake * _JUICE_PAYOFF if won else -kelly_stake)
 
         return flat_returns, kelly_returns
 

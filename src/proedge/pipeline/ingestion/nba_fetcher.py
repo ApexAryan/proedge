@@ -1,4 +1,5 @@
 """Fetch real NBA game data from the official NBA stats API (no key required)."""
+
 from __future__ import annotations
 
 import logging
@@ -10,38 +11,59 @@ import pandas as pd
 from nba_api.stats.endpoints import leaguegamelog
 
 # DNP comment substrings that indicate a genuine injury absence
-_INJURY_KEYWORDS = frozenset({
-    "INJURY", "ILLNESS", "ILL", "SICK", "PERSONAL",
-    "MEDICAL", "DND", "PROTOCOL", "CONCUSSION",
-    "KNEE", "ANKLE", "HAMSTRING", "BACK", "WRIST",
-    "SHOULDER", "HIP", "CALF", "QUAD", "GROIN",
-    "FOOT", "ACHILLES", "ELBOW", "HAND", "FINGER",
-    "REST",
-})
+_INJURY_KEYWORDS = frozenset(
+    {
+        "INJURY",
+        "ILLNESS",
+        "ILL",
+        "SICK",
+        "PERSONAL",
+        "MEDICAL",
+        "DND",
+        "PROTOCOL",
+        "CONCUSSION",
+        "KNEE",
+        "ANKLE",
+        "HAMSTRING",
+        "BACK",
+        "WRIST",
+        "SHOULDER",
+        "HIP",
+        "CALF",
+        "QUAD",
+        "GROIN",
+        "FOOT",
+        "ACHILLES",
+        "ELBOW",
+        "HAND",
+        "FINGER",
+        "REST",
+    }
+)
 _NON_INJURY = frozenset({"COACH'S DECISION", "COACHES DECISION"})
 
 logger = logging.getLogger(__name__)
 
 # nba_api column → our internal stat name
 _STAT_MAP = {
-    "PTS":        "points",
-    "REB":        "rebounds",
-    "AST":        "assists",
-    "STL":        "steals",
-    "BLK":        "blocks",
-    "TOV":        "turnovers",
-    "FGM":        "fieldGoalsMade",
-    "FGA":        "fieldGoalAttempts",
-    "FG_PCT":     "fieldGoalPct",
-    "FG3M":       "threesMade",
-    "FG3A":       "threePointAttempts",
-    "FG3_PCT":    "threePointPct",
-    "FTM":        "freeThrowsMade",
-    "FTA":        "freeThrowAttempts",
-    "FT_PCT":     "freeThrowPct",
-    "OREB":       "offensiveRebounds",
-    "DREB":       "defensiveRebounds",
-    "PF":         "personalFouls",
+    "PTS": "points",
+    "REB": "rebounds",
+    "AST": "assists",
+    "STL": "steals",
+    "BLK": "blocks",
+    "TOV": "turnovers",
+    "FGM": "fieldGoalsMade",
+    "FGA": "fieldGoalAttempts",
+    "FG_PCT": "fieldGoalPct",
+    "FG3M": "threesMade",
+    "FG3A": "threePointAttempts",
+    "FG3_PCT": "threePointPct",
+    "FTM": "freeThrowsMade",
+    "FTA": "freeThrowAttempts",
+    "FT_PCT": "freeThrowPct",
+    "OREB": "offensiveRebounds",
+    "DREB": "defensiveRebounds",
+    "PF": "personalFouls",
     "PLUS_MINUS": "netRating",
 }
 
@@ -122,20 +144,20 @@ def fetch_nba_games(
 
     rows: list[dict] = []
     for _, g in games.iterrows():
-        h_pts   = int(g["PTS_home"])
-        a_pts   = int(g["PTS_away"])
-        h_fga   = float(g.get("FGA_home", 85) or 85)
-        h_fta   = float(g.get("FTA_home", 22) or 22)
-        h_fg3a  = float(g.get("FG3A_home", 33) or 33)
-        h_oreb  = float(g.get("OREB_home", 10) or 10)
-        h_dreb  = float(g.get("DREB_home", 34) or 34)
-        h_tov   = float(g.get("TOV_home", 14) or 14)
-        a_fga   = float(g.get("FGA_away", 85) or 85)
-        a_fta   = float(g.get("FTA_away", 22) or 22)
-        a_fg3a  = float(g.get("FG3A_away", 33) or 33)
-        a_oreb  = float(g.get("OREB_away", 10) or 10)
-        a_dreb  = float(g.get("DREB_away", 34) or 34)
-        a_tov   = float(g.get("TOV_away", 14) or 14)
+        h_pts = int(g["PTS_home"])
+        a_pts = int(g["PTS_away"])
+        h_fga = float(g.get("FGA_home", 85) or 85)
+        h_fta = float(g.get("FTA_home", 22) or 22)
+        h_fg3a = float(g.get("FG3A_home", 33) or 33)
+        h_oreb = float(g.get("OREB_home", 10) or 10)
+        h_dreb = float(g.get("DREB_home", 34) or 34)
+        h_tov = float(g.get("TOV_home", 14) or 14)
+        a_fga = float(g.get("FGA_away", 85) or 85)
+        a_fta = float(g.get("FTA_away", 22) or 22)
+        a_fg3a = float(g.get("FG3A_away", 33) or 33)
+        a_oreb = float(g.get("OREB_away", 10) or 10)
+        a_dreb = float(g.get("DREB_away", 34) or 34)
+        a_tov = float(g.get("TOV_away", 14) or 14)
 
         # Hollinger possession estimate
         h_poss = max(1.0, h_fga - h_oreb + h_tov + 0.44 * h_fta)
@@ -146,18 +168,18 @@ def fetch_nba_games(
         total = h_pts + a_pts
 
         row: dict = {
-            "game_id":    str(g["GAME_ID"]),
-            "sport":      "nba",
-            "season":     _season_year(g["GAME_DATE_home"]),
-            "game_date":  g["GAME_DATE_home"],
-            "home_team":  home_team,
-            "away_team":  away_team,
+            "game_id": str(g["GAME_ID"]),
+            "sport": "nba",
+            "season": _season_year(g["GAME_DATE_home"]),
+            "game_date": g["GAME_DATE_home"],
+            "home_team": home_team,
+            "away_team": away_team,
             "home_score": h_pts,
             "away_score": a_pts,
-            "total":      total,
+            "total": total,
             "total_line": np.nan,
             "result_over": np.nan,
-            "venue":      f"{home_team}_arena",
+            "venue": f"{home_team}_arena",
         }
 
         # Raw box-score stats
@@ -166,40 +188,40 @@ def fetch_nba_games(
             row[f"away_{stat_name}"] = float(g.get(f"{api_col}_away", 0) or 0)
 
         # Real advanced stats derived from possession formula
-        row["home_possessions"]       = h_poss
-        row["away_possessions"]       = a_poss
+        row["home_possessions"] = h_poss
+        row["away_possessions"] = a_poss
         row["home_pointsPerPossession"] = h_pts / h_poss
         row["away_pointsPerPossession"] = a_pts / a_poss
-        row["home_trueShooting"]      = h_pts / max(1.0, 2 * (h_fga + 0.44 * h_fta))
-        row["away_trueShooting"]      = a_pts / max(1.0, 2 * (a_fga + 0.44 * a_fta))
-        row["home_offensiveRating"]   = 100.0 * h_pts / h_poss
-        row["away_offensiveRating"]   = 100.0 * a_pts / a_poss
-        row["home_defensiveRating"]   = 100.0 * a_pts / h_poss   # pts allowed per 100 home poss
-        row["away_defensiveRating"]   = 100.0 * h_pts / a_poss
-        row["home_pace"]              = h_poss
-        row["away_pace"]              = a_poss
-        row["home_assistRate"]        = float(g.get("AST_home", 25) or 25) / h_poss
-        row["away_assistRate"]        = float(g.get("AST_away", 25) or 25) / a_poss
-        row["home_drebRate"]          = h_dreb / max(1.0, h_dreb + a_oreb)
-        row["away_drebRate"]          = a_dreb / max(1.0, a_dreb + h_oreb)
-        row["home_ftRate"]            = h_fta / max(1.0, h_fga)
-        row["away_ftRate"]            = a_fta / max(1.0, a_fga)
-        row["home_threePointRate"]    = h_fg3a / max(1.0, h_fga)
-        row["away_threePointRate"]    = a_fg3a / max(1.0, a_fga)
+        row["home_trueShooting"] = h_pts / max(1.0, 2 * (h_fga + 0.44 * h_fta))
+        row["away_trueShooting"] = a_pts / max(1.0, 2 * (a_fga + 0.44 * a_fta))
+        row["home_offensiveRating"] = 100.0 * h_pts / h_poss
+        row["away_offensiveRating"] = 100.0 * a_pts / a_poss
+        row["home_defensiveRating"] = 100.0 * a_pts / h_poss  # pts allowed per 100 home poss
+        row["away_defensiveRating"] = 100.0 * h_pts / a_poss
+        row["home_pace"] = h_poss
+        row["away_pace"] = a_poss
+        row["home_assistRate"] = float(g.get("AST_home", 25) or 25) / h_poss
+        row["away_assistRate"] = float(g.get("AST_away", 25) or 25) / a_poss
+        row["home_drebRate"] = h_dreb / max(1.0, h_dreb + a_oreb)
+        row["away_drebRate"] = a_dreb / max(1.0, a_dreb + h_oreb)
+        row["home_ftRate"] = h_fta / max(1.0, h_fga)
+        row["away_ftRate"] = a_fta / max(1.0, a_fga)
+        row["home_threePointRate"] = h_fg3a / max(1.0, h_fga)
+        row["away_threePointRate"] = a_fg3a / max(1.0, a_fga)
 
         # GROUP C — situational context
-        row["wind_speed_mph"]       = 0.0          # indoor
-        row["temperature_f"]        = 72.0          # indoor
-        row["is_dome"]              = 1.0           # NBA is always indoor
-        row["altitude_feet"]        = _ALTITUDE_MAP.get(home_team, 0.0)
-        row["is_playoff"]           = 0.0           # regular season only
+        row["wind_speed_mph"] = 0.0  # indoor
+        row["temperature_f"] = 72.0  # indoor
+        row["is_dome"] = 1.0  # NBA is always indoor
+        row["altitude_feet"] = _ALTITUDE_MAP.get(home_team, 0.0)
+        row["is_playoff"] = 0.0  # regular season only
 
         # GROUP D — market signals (zero at training; overridden at inference)
-        row["line_movement"]        = 0.0
-        row["public_over_pct"]      = 0.5
-        row["sharp_over_pct"]       = 0.5
-        row["ref_foul_rate"]        = 0.0
-        row["ump_walk_rate"]        = 0.0
+        row["line_movement"] = 0.0
+        row["public_over_pct"] = 0.5
+        row["sharp_over_pct"] = 0.5
+        row["ref_foul_rate"] = 0.0
+        row["ump_walk_rate"] = 0.0
 
         # GROUP E — real injury counts from player DNP comments
         game_id_str = str(g["GAME_ID"])
@@ -234,7 +256,7 @@ def _compute_proxy_lines(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
     is harder to reconstruct from the 10-game rolling features.
     """
     df = df.copy()
-    team_scored:  dict[str, list[float]] = defaultdict(list)
+    team_scored: dict[str, list[float]] = defaultdict(list)
     team_allowed: dict[str, list[float]] = defaultdict(list)
     rng = np.random.default_rng(42)
 
@@ -243,9 +265,9 @@ def _compute_proxy_lines(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
         home, away = row["home_team"], row["away_team"]
         h_pts, a_pts = float(row["home_score"]), float(row["away_score"])
 
-        h_off = float(np.mean(team_scored[home][-window:]))  if team_scored[home]  else 113.0
+        h_off = float(np.mean(team_scored[home][-window:])) if team_scored[home] else 113.0
         h_def = float(np.mean(team_allowed[home][-window:])) if team_allowed[home] else 113.0
-        a_off = float(np.mean(team_scored[away][-window:]))  if team_scored[away]  else 111.0
+        a_off = float(np.mean(team_scored[away][-window:])) if team_scored[away] else 111.0
         a_def = float(np.mean(team_allowed[away][-window:])) if team_allowed[away] else 111.0
 
         expected_home = (h_off + a_def) / 2.0 + 1.5  # home court

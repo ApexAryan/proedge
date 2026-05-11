@@ -1,4 +1,5 @@
 """Alert system: fires when model finds high-confidence edges."""
+
 from __future__ import annotations
 
 import logging
@@ -14,15 +15,15 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Alert:
-    alert_id: str           # uuid
+    alert_id: str  # uuid
     sport: str
     home_team: str
     away_team: str
     game_date: str
-    direction: str          # "over" | "under"
+    direction: str  # "over" | "under"
     prob_over: float
     confidence: float
-    edge: float             # abs(prob_over - 0.5)
+    edge: float  # abs(prob_over - 0.5)
     total_line: float
     created_at: datetime
     fired: bool = False
@@ -106,7 +107,11 @@ class AlertManager:
             return False
 
         direction_label = alert.direction.upper()
-        prob_pct = round(alert.prob_over * 100) if alert.direction == "over" else round((1 - alert.prob_over) * 100)
+        prob_pct = (
+            round(alert.prob_over * 100)
+            if alert.direction == "over"
+            else round((1 - alert.prob_over) * 100)
+        )
         matchup = f"{alert.home_team} vs {alert.away_team}"
         pick_label = f"{direction_label} {alert.total_line}"
         conf_pct = round(alert.confidence * 100)
@@ -150,9 +155,7 @@ class AlertManager:
                 return False
         except httpx.RequestError as exc:
             alert.webhook_response = f"error: {exc}"
-            logger.warning(
-                "Alert webhook request failed for %s: %s", alert.alert_id, exc
-            )
+            logger.warning("Alert webhook request failed for %s: %s", alert.alert_id, exc)
             return False
 
     def recent(self, n: int = 50) -> list[Alert]:

@@ -9,6 +9,7 @@ from proedge.pipeline.models.registry import ModelRegistry
 
 # ── Calibration ───────────────────────────────────────────────────────────────
 
+
 def test_calibrator_fit_transform():
     rng = np.random.default_rng(42)
     raw = rng.uniform(0, 1, 500)
@@ -43,6 +44,7 @@ def test_calibrator_not_fitted_raises():
 
 
 # ── Drift Detection ───────────────────────────────────────────────────────────
+
 
 def test_psi_identical_distributions():
     arr = np.random.default_rng(42).normal(0, 1, 1000)
@@ -85,6 +87,7 @@ def test_drift_detector_triggers_on_drift():
 
 
 # ── Ensemble ──────────────────────────────────────────────────────────────────
+
 
 def test_ensemble_fit_predict(trained_model, sample_feature_matrix):
     model, feature_cols = trained_model
@@ -130,6 +133,7 @@ def test_ensemble_feature_importance(trained_model):
 
 
 # ── Registry ──────────────────────────────────────────────────────────────────
+
 
 def test_registry_save_load(trained_model, tmp_path):
     model, feature_cols = trained_model
@@ -259,20 +263,22 @@ def test_historical_loader_logs_error_on_synthetic(caplog, tmp_path):
 
     with caplog.at_level(logging.ERROR, logger="proedge.pipeline.ingestion.historical"):
         # Patch all real fetchers to fail so synthetic path is taken
-        with (
-            pytest.raises(Exception) if False else __import__("contextlib").nullcontext()
-        ):
+        with pytest.raises(Exception) if False else __import__("contextlib").nullcontext():
             import unittest.mock as mock
+
             with mock.patch(
                 "proedge.pipeline.ingestion.historical.HistoricalLoader._build_synthetic_dataset",
                 wraps=loader._build_synthetic_dataset,
             ):
                 # Force real fetchers to raise
-                with mock.patch.dict("sys.modules", {
-                    "proedge.pipeline.ingestion.nba_fetcher": None,
-                    "proedge.pipeline.ingestion.espn_nfl_fetcher": None,
-                    "proedge.pipeline.ingestion.mlb_stats_fetcher": None,
-                }):
+                with mock.patch.dict(
+                    "sys.modules",
+                    {
+                        "proedge.pipeline.ingestion.nba_fetcher": None,
+                        "proedge.pipeline.ingestion.espn_nfl_fetcher": None,
+                        "proedge.pipeline.ingestion.mlb_stats_fetcher": None,
+                    },
+                ):
                     try:
                         loader.load("nfl")
                     except Exception:

@@ -1,4 +1,5 @@
 """Unit tests for AlertManager — evaluate, fire, deque management."""
+
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
@@ -42,6 +43,7 @@ def _pred(confidence: float = 0.35, direction: str = "over") -> dict:
 # ---------------------------------------------------------------------------
 # evaluate()
 # ---------------------------------------------------------------------------
+
 
 class TestEvaluate:
     def test_below_threshold_returns_none(self):
@@ -105,6 +107,7 @@ class TestEvaluate:
 # recent() and pending()
 # ---------------------------------------------------------------------------
 
+
 class TestRecentAndPending:
     def test_recent_respects_limit(self):
         mgr = AlertManager(confidence_threshold=0.0)
@@ -143,6 +146,7 @@ class TestRecentAndPending:
 # ---------------------------------------------------------------------------
 # fire()
 # ---------------------------------------------------------------------------
+
 
 class TestFire:
     def test_no_webhook_returns_false_not_fired(self):

@@ -22,14 +22,10 @@ class GameRepository:
         return result.scalar_one_or_none()
 
     async def get_by_external_id(self, external_id: str) -> Game | None:
-        result = await self.session.execute(
-            select(Game).where(Game.external_id == external_id)
-        )
+        result = await self.session.execute(select(Game).where(Game.external_id == external_id))
         return result.scalar_one_or_none()
 
-    async def list_by_sport_date(
-        self, sport: str, start: datetime, end: datetime
-    ) -> list[Game]:
+    async def list_by_sport_date(self, sport: str, start: datetime, end: datetime) -> list[Game]:
         result = await self.session.execute(
             select(Game)
             .where(Game.sport == sport, Game.game_date >= start, Game.game_date <= end)
@@ -96,7 +92,11 @@ class PredictionRepository:
         result_over = actual_total > closing_line
         is_correct = (predicted_direction == "over") == result_over
         # CLV: positive = we beat the close (got a better number than where market settled)
-        clv = (closing_line - bet_line) if predicted_direction == "over" else (bet_line - closing_line)
+        clv = (
+            (closing_line - bet_line)
+            if predicted_direction == "over"
+            else (bet_line - closing_line)
+        )
         await self.session.execute(
             update(Prediction)
             .where(Prediction.id == prediction_id)
@@ -112,9 +112,7 @@ class PredictionRepository:
 
     async def mark_correct(self, prediction_id: UUID, is_correct: bool) -> None:
         await self.session.execute(
-            update(Prediction)
-            .where(Prediction.id == prediction_id)
-            .values(is_correct=is_correct)
+            update(Prediction).where(Prediction.id == prediction_id).values(is_correct=is_correct)
         )
 
     async def accuracy_by_version(self, model_version: str, sport: str) -> dict:
@@ -151,17 +149,13 @@ class ModelRunRepository:
 
     async def get_active(self, sport: str) -> ModelRun | None:
         result = await self.session.execute(
-            select(ModelRun).where(
-                ModelRun.sport == sport, ModelRun.is_active.is_(True)
-            )
+            select(ModelRun).where(ModelRun.sport == sport, ModelRun.is_active.is_(True))
         )
         return result.scalar_one_or_none()
 
     async def deactivate_all(self, sport: str) -> None:
         await self.session.execute(
-            update(ModelRun)
-            .where(ModelRun.sport == sport)
-            .values(is_active=False)
+            update(ModelRun).where(ModelRun.sport == sport).values(is_active=False)
         )
 
     async def activate(self, version: str) -> None:

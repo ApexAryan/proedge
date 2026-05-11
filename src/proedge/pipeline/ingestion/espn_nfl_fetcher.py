@@ -1,4 +1,5 @@
 """Fetch real NFL regular-season game data from ESPN's public (unofficial) API."""
+
 from __future__ import annotations
 
 import logging
@@ -10,33 +11,35 @@ import numpy as np
 import pandas as pd
 
 from proedge.pipeline.ingestion.stats import STAT_KEYS
-from proedge.pipeline.ingestion.utils import safe_int as _safe_int, safe_float as _safe_float, compute_proxy_lines as _proxy
+from proedge.pipeline.ingestion.utils import (
+    safe_int as _safe_int,
+    safe_float as _safe_float,
+    compute_proxy_lines as _proxy,
+)
 
 logger = logging.getLogger(__name__)
 
-_SCOREBOARD_URL = (
-    "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
-)
-_SUMMARY_URL = (
-    "https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary"
-)
+_SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
+_SUMMARY_URL = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary"
 
 _DEFAULT_SEASONS = [2019, 2020, 2021, 2022, 2023, 2024]
 
 # Teams that play home games in a dome (full or retractable-roof)
-_DOME_HOME_TEAMS = frozenset({
-    "ATL",  # Mercedes-Benz Stadium
-    "NO",   # Caesars Superdome
-    "IND",  # Lucas Oil Stadium
-    "LV",   # Allegiant Stadium
-    "MIN",  # U.S. Bank Stadium
-    "HOU",  # NRG Stadium
-    "ARI",  # State Farm Stadium (retractable)
-    "DET",  # Ford Field
-    "DAL",  # AT&T Stadium (retractable)
-    "LAR",  # SoFi Stadium (covered)
-    "LAC",  # SoFi Stadium (covered)
-})
+_DOME_HOME_TEAMS = frozenset(
+    {
+        "ATL",  # Mercedes-Benz Stadium
+        "NO",  # Caesars Superdome
+        "IND",  # Lucas Oil Stadium
+        "LV",  # Allegiant Stadium
+        "MIN",  # U.S. Bank Stadium
+        "HOU",  # NRG Stadium
+        "ARI",  # State Farm Stadium (retractable)
+        "DET",  # Ford Field
+        "DAL",  # AT&T Stadium (retractable)
+        "LAR",  # SoFi Stadium (covered)
+        "LAC",  # SoFi Stadium (covered)
+    }
+)
 
 # Home teams whose stadiums are at meaningful altitude (feet above sea level)
 _ALTITUDE_FEET: dict[str, float] = {
@@ -108,7 +111,6 @@ def _parse_time_of_possession(value: str | None) -> float:
         return 30.0
 
 
-
 def _parse_team_stats(stat_list: list[dict]) -> dict[str, float]:
     """
     Parse a boxscore statistics list into a flat dict of our internal stat names.
@@ -123,9 +125,7 @@ def _parse_team_stats(stat_list: list[dict]) -> dict[str, float]:
     red_zone = _parse_fraction(_parse_stat(stat_list, "Red Zone (Made-Att)"))
     possession = _parse_time_of_possession(_parse_stat(stat_list, "Possession"))
     yards_per_play = _safe_float(_parse_stat(stat_list, "Yards per Play"))
-    fourth_down = _parse_fraction(
-        _parse_stat(stat_list, "4th down efficiency"), default=0.0
-    )
+    fourth_down = _parse_fraction(_parse_stat(stat_list, "4th down efficiency"), default=0.0)
     penalty_yards = _parse_second_number(_parse_stat(stat_list, "Penalties"))
 
     # Derived stats
@@ -144,23 +144,23 @@ def _parse_team_stats(stat_list: list[dict]) -> dict[str, float]:
     pressure_rate = sacks / passing_attempts
 
     return {
-        "passingYards":        float(passing_yards),
-        "rushingYards":        float(rushing_yards),
-        "receivingYards":      float(total_yards),   # proxy: totalYards stored here
-        "turnovers":           float(turnovers),
-        "sacks":               float(sacks),
+        "passingYards": float(passing_yards),
+        "rushingYards": float(rushing_yards),
+        "receivingYards": float(total_yards),  # proxy: totalYards stored here
+        "turnovers": float(turnovers),
+        "sacks": float(sacks),
         "thirdDownConversion": third_down,
-        "redZoneEfficiency":   red_zone,
-        "timeOfPossession":    possession,
-        "yardsPerPlay":        yards_per_play,
+        "redZoneEfficiency": red_zone,
+        "timeOfPossession": possession,
+        "yardsPerPlay": yards_per_play,
         "fourthDownConversion": fourth_down,
-        "penaltyYards":        penalty_yards,
-        "pressureRate":        pressure_rate,
-        "secondsPerPlay":      seconds_per_play,
+        "penaltyYards": penalty_yards,
+        "pressureRate": pressure_rate,
+        "secondsPerPlay": seconds_per_play,
         # pointsScored/pointsAllowed populated from score after
-        "pointsScored":        0.0,
-        "pointsAllowed":       0.0,
-        "redZoneConvRate":     red_zone,  # same as redZoneEfficiency
+        "pointsScored": 0.0,
+        "pointsAllowed": 0.0,
+        "redZoneConvRate": red_zone,  # same as redZoneEfficiency
     }
 
 
@@ -169,18 +169,13 @@ def _count_injuries(competitor: dict) -> int:
     injuries = competitor.get("injuries", [])
     count = 0
     for inj in injuries:
-        status = (
-            inj.get("status", "")
-            or inj.get("type", {}).get("name", "")
-        )
+        status = inj.get("status", "") or inj.get("type", {}).get("name", "")
         if isinstance(status, str) and status.upper() in {"OUT", "DOUBTFUL"}:
             count += 1
     return count
 
 
-def _fetch_scoreboard(
-    client: httpx.Client, season: int, week: int
-) -> list[dict]:
+def _fetch_scoreboard(client: httpx.Client, season: int, week: int) -> list[dict]:
     """Return the list of event dicts for a given season/week."""
     try:
         resp = client.get(
@@ -192,18 +187,14 @@ def _fetch_scoreboard(
         data = resp.json()
         return data.get("events", [])
     except Exception as exc:
-        logger.warning(
-            "Scoreboard fetch failed season=%d week=%d: %s", season, week, exc
-        )
+        logger.warning("Scoreboard fetch failed season=%d week=%d: %s", season, week, exc)
         return []
 
 
 def _fetch_summary(client: httpx.Client, game_id: str) -> dict:
     """Return the full summary JSON for a single game."""
     try:
-        resp = client.get(
-            _SUMMARY_URL, params={"event": game_id}, timeout=20
-        )
+        resp = client.get(_SUMMARY_URL, params={"event": game_id}, timeout=20)
         resp.raise_for_status()
         return resp.json()
     except Exception as exc:
@@ -224,9 +215,7 @@ def _build_game_row(
         competition = event.get("competitions", [{}])[0]
 
         # Confirm final status
-        status_name = (
-            competition.get("status", {}).get("type", {}).get("name", "")
-        )
+        status_name = competition.get("status", {}).get("type", {}).get("name", "")
         if status_name != "STATUS_FINAL":
             return None
 
@@ -242,12 +231,8 @@ def _build_game_row(
             return None
 
         # Identify home and away
-        home_comp = next(
-            (c for c in competitors if c.get("homeAway") == "home"), competitors[0]
-        )
-        away_comp = next(
-            (c for c in competitors if c.get("homeAway") == "away"), competitors[1]
-        )
+        home_comp = next((c for c in competitors if c.get("homeAway") == "home"), competitors[0])
+        away_comp = next((c for c in competitors if c.get("homeAway") == "away"), competitors[1])
 
         home_team = home_comp.get("team", {}).get("abbreviation", "UNK")
         away_team = away_comp.get("team", {}).get("abbreviation", "UNK")
@@ -277,13 +262,9 @@ def _build_game_row(
 
         # Fall back: try matching by index if abbreviations don't match
         if not home_stats and len(boxscore_teams) >= 1:
-            home_stats = _parse_team_stats(
-                boxscore_teams[0].get("statistics", [])
-            )
+            home_stats = _parse_team_stats(boxscore_teams[0].get("statistics", []))
         if not away_stats and len(boxscore_teams) >= 2:
-            away_stats = _parse_team_stats(
-                boxscore_teams[1].get("statistics", [])
-            )
+            away_stats = _parse_team_stats(boxscore_teams[1].get("statistics", []))
 
         # Fill pointsScored / pointsAllowed
         home_stats["pointsScored"] = float(home_score)
@@ -317,18 +298,18 @@ def _build_game_row(
         venue_name = venue_info.get("fullName", f"{home_team}_stadium")
 
         row: dict = {
-            "game_id":    game_id,
-            "sport":      "nfl",
-            "season":     season,
-            "game_date":  game_date,
-            "home_team":  home_team,
-            "away_team":  away_team,
+            "game_id": game_id,
+            "sport": "nfl",
+            "season": season,
+            "game_date": game_date,
+            "home_team": home_team,
+            "away_team": away_team,
             "home_score": home_score,
             "away_score": away_score,
-            "total":      total,
+            "total": total,
             "total_line": np.nan,
             "result_over": np.nan,
-            "venue":      venue_name,
+            "venue": venue_name,
         }
 
         # Per-team stat columns — use STAT_KEYS["nfl"] to guarantee coverage
@@ -337,18 +318,18 @@ def _build_game_row(
             row[f"away_{stat}"] = away_stats.get(stat, 0.0)
 
         # GROUP C
-        row["wind_speed_mph"]  = wind_speed_mph
-        row["temperature_f"]   = temperature_f
-        row["is_dome"]         = is_dome
-        row["altitude_feet"]   = altitude_feet
-        row["is_playoff"]      = 0.0
+        row["wind_speed_mph"] = wind_speed_mph
+        row["temperature_f"] = temperature_f
+        row["is_dome"] = is_dome
+        row["altitude_feet"] = altitude_feet
+        row["is_playoff"] = 0.0
 
         # GROUP D
-        row["line_movement"]   = 0.0
+        row["line_movement"] = 0.0
         row["public_over_pct"] = 0.5
-        row["sharp_over_pct"]  = 0.5
-        row["ref_foul_rate"]   = 0.0
-        row["ump_walk_rate"]   = 0.0
+        row["sharp_over_pct"] = 0.5
+        row["ref_foul_rate"] = 0.0
+        row["ump_walk_rate"] = 0.0
 
         # GROUP E
         row["home_key_players_out"] = float(home_injuries)
@@ -357,17 +338,21 @@ def _build_game_row(
         return row
 
     except Exception as exc:
-        logger.warning(
-            "Failed to build row for game %s: %s", event.get("id"), exc
-        )
+        logger.warning("Failed to build row for game %s: %s", event.get("id"), exc)
         return None
 
 
 def _compute_proxy_lines(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
-    return _proxy(df, clip_lo=28.0, clip_hi=80.0,
-                  home_off_default=23.0, home_def_default=21.0,
-                  away_off_default=21.0, away_def_default=23.0,
-                  window=window)
+    return _proxy(
+        df,
+        clip_lo=28.0,
+        clip_hi=80.0,
+        home_off_default=23.0,
+        home_def_default=21.0,
+        away_off_default=21.0,
+        away_def_default=23.0,
+        window=window,
+    )
 
 
 def fetch_nfl_games(
@@ -400,7 +385,9 @@ def fetch_nfl_games(
     with httpx.Client(follow_redirects=True) as client:
         for season in seasons:
             week_range = _SEASON_WEEKS.get(season, range(1, 19))
-            logger.info("  → NFL season %d (weeks %d-%d)", season, week_range.start, week_range.stop - 1)
+            logger.info(
+                "  → NFL season %d (weeks %d-%d)", season, week_range.start, week_range.stop - 1
+            )
 
             for week in week_range:
                 events = _fetch_scoreboard(client, season, week)
@@ -411,14 +398,18 @@ def fetch_nfl_games(
 
                 # Filter to final games only before fetching summaries
                 final_events = [
-                    ev for ev in events
-                    if ev.get("competitions", [{}])[0]
-                       .get("status", {}).get("type", {}).get("name") == "STATUS_FINAL"
+                    ev
+                    for ev in events
+                    if ev.get("competitions", [{}])[0].get("status", {}).get("type", {}).get("name")
+                    == "STATUS_FINAL"
                 ]
 
                 logger.debug(
                     "Season %d week %d: %d total events, %d final",
-                    season, week, len(events), len(final_events),
+                    season,
+                    week,
+                    len(events),
+                    len(final_events),
                 )
 
                 for event in final_events:

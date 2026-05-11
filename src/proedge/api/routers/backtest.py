@@ -1,4 +1,5 @@
 """Backtesting endpoints — replay historical predictions to measure edge and ROI."""
+
 from __future__ import annotations
 
 import asyncio
@@ -12,12 +13,15 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/backtest", tags=["backtest"])
 
+
 def _valid_sports() -> set[str]:
     from proedge.config import get_settings
+
     return set(get_settings().supported_sports)
 
 
 # ── Response schemas ──────────────────────────────────────────────────────────
+
 
 class FoldResultResponse(BaseModel):
     fold: int
@@ -53,6 +57,7 @@ class BacktestResponse(BaseModel):
 
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 
+
 @router.post(
     "/{sport}",
     response_model=BacktestResponse,
@@ -72,7 +77,9 @@ async def run_backtest(
         500, ge=100, description="Minimum training games before first prediction fold"
     ),
     min_confidence: float = Query(
-        0.0, ge=0.0, le=1.0,
+        0.0,
+        ge=0.0,
+        le=1.0,
         description="Only include predictions with confidence >= this value in ROI calculations",
     ),
 ):

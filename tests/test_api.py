@@ -1,4 +1,5 @@
 """FastAPI endpoint tests — uses httpx AsyncClient (no real DB required)."""
+
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -187,6 +188,7 @@ def test_invalid_sport_returns_400():
 # GET /predictions/recent
 # ---------------------------------------------------------------------------
 
+
 def test_get_recent_predictions_empty_list():
     with patch("proedge.api.routers.predictions.PredictionRepository") as MockPredRepo:
         instance = AsyncMock()
@@ -227,10 +229,20 @@ def test_get_recent_predictions_returns_correct_keys():
         assert len(data) == 1
         item = data[0]
         for key in (
-            "prediction_id", "sport", "prob_over", "prob_under",
-            "predicted_direction", "confidence", "predicted_at",
-            "is_correct", "clv", "actual_total", "closing_line",
-            "settled_at", "model_version", "game_id",
+            "prediction_id",
+            "sport",
+            "prob_over",
+            "prob_under",
+            "predicted_direction",
+            "confidence",
+            "predicted_at",
+            "is_correct",
+            "clv",
+            "actual_total",
+            "closing_line",
+            "settled_at",
+            "model_version",
+            "game_id",
         ):
             assert key in item, f"Missing key: {key}"
 
@@ -249,6 +261,7 @@ def test_get_recent_predictions_sport_filter():
 # ---------------------------------------------------------------------------
 # GET /predictions/alerts/recent
 # ---------------------------------------------------------------------------
+
 
 def test_get_recent_alerts_returns_correct_structure():
     mock_alert = MagicMock()
@@ -276,9 +289,18 @@ def test_get_recent_alerts_returns_correct_structure():
         assert len(data) == 1
         item = data[0]
         for key in (
-            "alert_id", "sport", "home_team", "away_team", "game_date",
-            "direction", "confidence", "prob_over", "edge", "total_line",
-            "fired", "created_at",
+            "alert_id",
+            "sport",
+            "home_team",
+            "away_team",
+            "game_date",
+            "direction",
+            "confidence",
+            "prob_over",
+            "edge",
+            "total_line",
+            "fired",
+            "created_at",
         ):
             assert key in item, f"Missing key: {key}"
 
@@ -286,6 +308,7 @@ def test_get_recent_alerts_returns_correct_structure():
 # ---------------------------------------------------------------------------
 # POST /predictions/{prediction_id}/settle
 # ---------------------------------------------------------------------------
+
 
 def test_settle_prediction_invalid_uuid():
     resp = client.post(
@@ -356,6 +379,7 @@ def test_settle_prediction_valid():
 # GET /models/accuracy/live
 # ---------------------------------------------------------------------------
 
+
 def test_live_accuracy_returns_dict_with_correct_structure():
     with (
         patch("proedge.api.routers.performance._registry") as mock_registry,
@@ -364,9 +388,7 @@ def test_live_accuracy_returns_dict_with_correct_structure():
         mock_registry.load_meta.return_value = {"version": "v1"}
 
         pred_instance = AsyncMock()
-        pred_instance.accuracy_by_version = AsyncMock(
-            return_value={"accuracy": 0.72, "total": 50}
-        )
+        pred_instance.accuracy_by_version = AsyncMock(return_value={"accuracy": 0.72, "total": 50})
         MockPredRepo.return_value = pred_instance
 
         resp = client.get("/models/accuracy/live")
@@ -401,6 +423,7 @@ def test_live_accuracy_file_not_found_returns_null_accuracy():
 # POST /models/drift-check/{sport}
 # ---------------------------------------------------------------------------
 
+
 def test_drift_check_invalid_sport():
     resp = client.post("/models/drift-check/hockey")
     assert resp.status_code == 400
@@ -432,6 +455,7 @@ def test_drift_check_returns_report():
 # GET /training/status/{sport} and GET /training/status
 # ---------------------------------------------------------------------------
 
+
 def test_training_status_invalid_sport():
     resp = client.get("/training/status/hockey")
     assert resp.status_code == 422
@@ -439,7 +463,10 @@ def test_training_status_invalid_sport():
 
 def test_training_status_valid_sport():
     with patch("proedge.pipeline.models.registry.ModelRegistry") as MockReg:
-        MockReg.return_value.load_meta.return_value = {"version": "v1", "trained_at": "2026-01-01T00:00:00"}
+        MockReg.return_value.load_meta.return_value = {
+            "version": "v1",
+            "trained_at": "2026-01-01T00:00:00",
+        }
         resp = client.get("/training/status/nba")
     assert resp.status_code == 200
     data = resp.json()
@@ -472,6 +499,7 @@ def test_training_retrain_invalid_sport():
 # ---------------------------------------------------------------------------
 # GET /lines/prizepicks/{sport}
 # ---------------------------------------------------------------------------
+
 
 def test_lines_invalid_sport():
     resp = client.get("/lines/prizepicks/hockey")

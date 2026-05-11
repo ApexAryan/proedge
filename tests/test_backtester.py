@@ -1,4 +1,5 @@
 """Unit tests for the walk-forward backtester."""
+
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
@@ -19,6 +20,7 @@ _KELLY_CAP = 0.25
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_synthetic_df(n: int = 200, sport: str = "nba") -> pd.DataFrame:
     rng = np.random.default_rng(42)
     teams = ["BOS", "LAL", "GSW", "MIA", "CHI"]
@@ -29,36 +31,38 @@ def _make_synthetic_df(n: int = 200, sport: str = "nba") -> pd.DataFrame:
         away = teams[(i + 1) % len(teams)]
         total = float(rng.normal(224, 18))
         line = total + rng.normal(0, 2)
-        rows.append({
-            "game_id": f"g{i:04d}",
-            "sport": sport,
-            "season": 2024,
-            "game_date": datetime(2023, 1, 1) + timedelta(days=i),
-            "home_team": home,
-            "away_team": away,
-            "home_score": int(total / 2 + rng.normal(0, 5)),
-            "away_score": int(total / 2 + rng.normal(0, 5)),
-            "total": total,
-            "total_line": round(line, 1),
-            "result_over": int(total > line),
-            "venue": f"{home}_arena",
-            **{f"home_{s}": float(rng.uniform(90, 130)) for s in stat_cols},
-            **{f"away_{s}": float(rng.uniform(90, 130)) for s in stat_cols},
-            "wind_speed_mph": 0.0,
-            "temperature_f": 70.0,
-            "is_dome": 0.0,
-            "altitude_feet": 0.0,
-            "is_playoff": 0.0,
-            "line_movement": 0.0,
-            "public_over_pct": 0.5,
-            "sharp_over_pct": 0.5,
-            "ref_foul_rate": 0.0,
-            "ump_walk_rate": 0.0,
-            "home_key_players_out": 0.0,
-            "away_key_players_out": 0.0,
-            "home_injury_impact": 0.0,
-            "away_injury_impact": 0.0,
-        })
+        rows.append(
+            {
+                "game_id": f"g{i:04d}",
+                "sport": sport,
+                "season": 2024,
+                "game_date": datetime(2023, 1, 1) + timedelta(days=i),
+                "home_team": home,
+                "away_team": away,
+                "home_score": int(total / 2 + rng.normal(0, 5)),
+                "away_score": int(total / 2 + rng.normal(0, 5)),
+                "total": total,
+                "total_line": round(line, 1),
+                "result_over": int(total > line),
+                "venue": f"{home}_arena",
+                **{f"home_{s}": float(rng.uniform(90, 130)) for s in stat_cols},
+                **{f"away_{s}": float(rng.uniform(90, 130)) for s in stat_cols},
+                "wind_speed_mph": 0.0,
+                "temperature_f": 70.0,
+                "is_dome": 0.0,
+                "altitude_feet": 0.0,
+                "is_playoff": 0.0,
+                "line_movement": 0.0,
+                "public_over_pct": 0.5,
+                "sharp_over_pct": 0.5,
+                "ref_foul_rate": 0.0,
+                "ump_walk_rate": 0.0,
+                "home_key_players_out": 0.0,
+                "away_key_players_out": 0.0,
+                "home_injury_impact": 0.0,
+                "away_injury_impact": 0.0,
+            }
+        )
     df = pd.DataFrame(rows)
     df["game_date"] = pd.to_datetime(df["game_date"])
     return df
@@ -67,6 +71,7 @@ def _make_synthetic_df(n: int = 200, sport: str = "nba") -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # _fold_edges
 # ---------------------------------------------------------------------------
+
 
 def test_fold_edges_count():
     bt = Backtester("nba")
@@ -86,6 +91,7 @@ def test_fold_edges_monotonic():
 # ---------------------------------------------------------------------------
 # _simulate_betting
 # ---------------------------------------------------------------------------
+
 
 def test_simulate_betting_correct_over_bet():
     bt = Backtester("nba")
@@ -135,6 +141,7 @@ def test_simulate_betting_kelly_capped():
 # _sharpe
 # ---------------------------------------------------------------------------
 
+
 def test_sharpe_identical_returns():
     returns = np.ones(100) * 0.05
     assert Backtester._sharpe(returns) == 0.0
@@ -171,6 +178,7 @@ def test_sharpe_annualisation():
 # _max_drawdown
 # ---------------------------------------------------------------------------
 
+
 def test_max_drawdown_no_drawdown():
     returns = [10.0, 20.0, 30.0, 40.0, 50.0]
     dd = Backtester._max_drawdown(returns)
@@ -194,6 +202,7 @@ def test_max_drawdown_single_element():
 # ---------------------------------------------------------------------------
 # _calibration
 # ---------------------------------------------------------------------------
+
 
 def test_calibration_structure():
     rng = np.random.default_rng(7)
@@ -228,6 +237,7 @@ def test_calibration_actual_freq_in_range():
 # _load_data
 # ---------------------------------------------------------------------------
 
+
 def test_load_data_missing_raises():
     bt = Backtester("nba", data_dir="/nonexistent/path")
     with pytest.raises(FileNotFoundError):
@@ -237,6 +247,7 @@ def test_load_data_missing_raises():
 # ---------------------------------------------------------------------------
 # full run (integration — mocks _load_data)
 # ---------------------------------------------------------------------------
+
 
 def test_run_returns_backtest_result():
     df = _make_synthetic_df(n=200, sport="nba")

@@ -1,4 +1,5 @@
 """Real bookmaker lines from The Odds API — totals and spreads."""
+
 from __future__ import annotations
 
 import logging
@@ -23,14 +24,14 @@ _SPORT_KEY_MAP: dict[str, str] = {
 
 @dataclass
 class GameOdds:
-    game_id: str              # The Odds API event ID
+    game_id: str  # The Odds API event ID
     sport: str
-    home_team: str            # full name e.g. "Los Angeles Lakers"
+    home_team: str  # full name e.g. "Los Angeles Lakers"
     away_team: str
     commence_time: datetime
     total_line: float | None  # consensus over/under (median across bookmakers)
-    spread: float | None      # home team spread (negative = favored)
-    home_ml: int | None       # home moneyline
+    spread: float | None  # home team spread (negative = favored)
+    home_ml: int | None  # home moneyline
     away_ml: int | None
     bookmaker_count: int
     sources: list[str] = field(default_factory=list)  # bookmaker keys used
@@ -79,9 +80,7 @@ class OddsFetcher:
             return []
 
         if resp.status_code == 401:
-            logger.warning(
-                "OddsFetcher: invalid API key (401) — check settings.odds_api_key"
-            )
+            logger.warning("OddsFetcher: invalid API key (401) — check settings.odds_api_key")
             return []
         if resp.status_code == 429:
             logger.warning(
@@ -106,9 +105,7 @@ class OddsFetcher:
         events: list[dict[str, Any]] = resp.json()
         return [self._parse_event(event, sport) for event in events]
 
-    def get_total_line(
-        self, sport: str, home_team: str, away_team: str
-    ) -> float | None:
+    def get_total_line(self, sport: str, home_team: str, away_team: str) -> float | None:
         """Best-effort lookup: return consensus total for a specific matchup.
 
         Matches teams by partial, case-insensitive substring comparison so
@@ -121,9 +118,7 @@ class OddsFetcher:
         for game in games:
             ht = game.home_team.lower()
             at = game.away_team.lower()
-            if (home_lower in ht or ht in home_lower) and (
-                away_lower in at or at in away_lower
-            ):
+            if (home_lower in ht or ht in home_lower) and (away_lower in at or at in away_lower):
                 return game.total_line
 
         return None
@@ -136,9 +131,7 @@ class OddsFetcher:
         """Translate a ProEdge sport string to the Odds API sport key."""
         key = _SPORT_KEY_MAP.get(sport.lower())
         if key is None:
-            raise ValueError(
-                f"Unknown sport '{sport}'. Supported: {list(_SPORT_KEY_MAP)}"
-            )
+            raise ValueError(f"Unknown sport '{sport}'. Supported: {list(_SPORT_KEY_MAP)}")
         return key
 
     def _parse_event(self, event: dict[str, Any], sport: str) -> GameOdds:
@@ -149,9 +142,7 @@ class OddsFetcher:
 
         commence_raw: str = event.get("commence_time", "")
         try:
-            commence_time = datetime.fromisoformat(
-                commence_raw.replace("Z", "+00:00")
-            )
+            commence_time = datetime.fromisoformat(commence_raw.replace("Z", "+00:00"))
         except (ValueError, AttributeError):
             commence_time = datetime.now(timezone.utc)
 
@@ -171,9 +162,7 @@ class OddsFetcher:
                 outcomes: list[dict[str, Any]] = market.get("outcomes", [])
 
                 if mkt_key == "totals":
-                    over = next(
-                        (o for o in outcomes if o.get("name") == "Over"), None
-                    )
+                    over = next((o for o in outcomes if o.get("name") == "Over"), None)
                     if over and over.get("point") is not None:
                         try:
                             totals.append(float(over["point"]))
@@ -182,11 +171,7 @@ class OddsFetcher:
 
                 elif mkt_key == "spreads":
                     home_spread = next(
-                        (
-                            o
-                            for o in outcomes
-                            if o.get("name", "").lower() == home_team.lower()
-                        ),
+                        (o for o in outcomes if o.get("name", "").lower() == home_team.lower()),
                         None,
                     )
                     if home_spread and home_spread.get("point") is not None:
@@ -242,9 +227,7 @@ async def fetch_game_odds_async(sport: str, api_key: str) -> list[GameOdds]:
     Returns an empty list if the API key is missing, invalid, or rate-limited.
     """
     if not api_key:
-        logger.warning(
-            "fetch_game_odds_async: api_key is empty — skipping fetch for %s", sport
-        )
+        logger.warning("fetch_game_odds_async: api_key is empty — skipping fetch for %s", sport)
         return []
 
     sport_key = _SPORT_KEY_MAP.get(sport.lower())
@@ -263,15 +246,11 @@ async def fetch_game_odds_async(sport: str, api_key: str) -> list[GameOdds]:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(url, params=params)
     except httpx.RequestError as exc:
-        logger.warning(
-            "fetch_game_odds_async: network error fetching %s odds: %s", sport, exc
-        )
+        logger.warning("fetch_game_odds_async: network error fetching %s odds: %s", sport, exc)
         return []
 
     if resp.status_code == 401:
-        logger.warning(
-            "fetch_game_odds_async: invalid API key (401) — check settings.odds_api_key"
-        )
+        logger.warning("fetch_game_odds_async: invalid API key (401) — check settings.odds_api_key")
         return []
     if resp.status_code == 429:
         logger.warning(

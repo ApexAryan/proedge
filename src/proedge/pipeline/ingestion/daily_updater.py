@@ -2,6 +2,7 @@
 Daily game updater: fetches completed games, appends to historical data,
 clears the feature cache, and optionally triggers a model retrain.
 """
+
 from __future__ import annotations
 
 import logging
@@ -23,24 +24,24 @@ _FEATURES_DIR = Path("./data/features")
 
 # BoxScoreTraditionalV3 team stat key → internal stat name (matches STAT_KEYS in stats.py)
 _BSCORE_STAT_MAP: dict[str, str] = {
-    "fieldGoalsMade":        "fieldGoalsMade",
-    "fieldGoalsAttempted":   "fieldGoalAttempts",
-    "fieldGoalsPercentage":  "fieldGoalPct",
-    "threePointersMade":     "threesMade",
-    "threePointersAttempted":"threePointAttempts",
-    "threePointersPercentage":"threePointPct",
-    "freeThrowsMade":        "freeThrowsMade",
-    "freeThrowsAttempted":   "freeThrowAttempts",
-    "freeThrowsPercentage":  "freeThrowPct",
-    "reboundsOffensive":     "offensiveRebounds",
-    "reboundsDefensive":     "defensiveRebounds",
-    "reboundsTotal":         "rebounds",
-    "assists":               "assists",
-    "steals":                "steals",
-    "blocks":                "blocks",
-    "turnovers":             "turnovers",
-    "foulsPersonal":         "personalFouls",
-    "points":                "points",
+    "fieldGoalsMade": "fieldGoalsMade",
+    "fieldGoalsAttempted": "fieldGoalAttempts",
+    "fieldGoalsPercentage": "fieldGoalPct",
+    "threePointersMade": "threesMade",
+    "threePointersAttempted": "threePointAttempts",
+    "threePointersPercentage": "threePointPct",
+    "freeThrowsMade": "freeThrowsMade",
+    "freeThrowsAttempted": "freeThrowAttempts",
+    "freeThrowsPercentage": "freeThrowPct",
+    "reboundsOffensive": "offensiveRebounds",
+    "reboundsDefensive": "defensiveRebounds",
+    "reboundsTotal": "rebounds",
+    "assists": "assists",
+    "steals": "steals",
+    "blocks": "blocks",
+    "turnovers": "turnovers",
+    "foulsPersonal": "personalFouls",
+    "points": "points",
 }
 
 _ALTITUDE_MAP = {"DEN": 5280.0, "COL": 5280.0, "UTA": 4300.0}
@@ -53,7 +54,7 @@ class UpdateResult:
     date: str
     games_found: int = 0
     games_added: int = 0
-    games_skipped: int = 0   # already in historical (dedup)
+    games_skipped: int = 0  # already in historical (dedup)
     retrain_triggered: bool = False
     retrain_metrics: dict = field(default_factory=dict)
     error: str | None = None
@@ -96,7 +97,10 @@ class DailyUpdater:
             result.games_skipped = skipped
             logger.info(
                 "Daily update %s %s: +%d games (%d already existed)",
-                self.sport.upper(), date_str, added, skipped,
+                self.sport.upper(),
+                date_str,
+                added,
+                skipped,
             )
 
             if added > 0:
@@ -151,9 +155,7 @@ class DailyUpdater:
             time.sleep(0.7)  # respect NBA API rate limits
 
             try:
-                bx = boxscoretraditionalv3.BoxScoreTraditionalV3(
-                    game_id=game_id, timeout=30
-                )
+                bx = boxscoretraditionalv3.BoxScoreTraditionalV3(game_id=game_id, timeout=30)
                 bx_data = bx.get_dict().get("boxScoreTraditional", {})
             except Exception as exc:
                 logger.warning("BoxScore fetch failed for %s: %s", game_id, exc)
@@ -171,14 +173,14 @@ class DailyUpdater:
             total = h_pts + a_pts
 
             # Compute possessions (Hollinger)
-            h_fga  = float(home_stats.get("fieldGoalsAttempted", 85))
-            h_fta  = float(home_stats.get("freeThrowsAttempted", 22))
+            h_fga = float(home_stats.get("fieldGoalsAttempted", 85))
+            h_fta = float(home_stats.get("freeThrowsAttempted", 22))
             h_oreb = float(home_stats.get("reboundsOffensive", 10))
-            h_tov  = float(home_stats.get("turnovers", 14))
-            a_fga  = float(away_stats.get("fieldGoalsAttempted", 85))
-            a_fta  = float(away_stats.get("freeThrowsAttempted", 22))
+            h_tov = float(home_stats.get("turnovers", 14))
+            a_fga = float(away_stats.get("fieldGoalsAttempted", 85))
+            a_fta = float(away_stats.get("freeThrowsAttempted", 22))
             a_oreb = float(away_stats.get("reboundsOffensive", 10))
-            a_tov  = float(away_stats.get("turnovers", 14))
+            a_tov = float(away_stats.get("turnovers", 14))
             h_poss = max(1.0, h_fga - h_oreb + h_tov + 0.44 * h_fta)
             a_poss = max(1.0, a_fga - a_oreb + a_tov + 0.44 * a_fta)
 
@@ -188,29 +190,25 @@ class DailyUpdater:
             a_dreb = float(away_stats.get("reboundsDefensive", 34))
 
             # Injury counts from player comments
-            h_injury = injuries_from_boxscore(
-                home.get("players", []), home_abbr, "nba"
-            )
-            a_injury = injuries_from_boxscore(
-                away.get("players", []), away_abbr, "nba"
-            )
+            h_injury = injuries_from_boxscore(home.get("players", []), home_abbr, "nba")
+            a_injury = injuries_from_boxscore(away.get("players", []), away_abbr, "nba")
 
             game_date = pd.Timestamp(meta.get("gameTimeUTC", str(target_date)))
             season = int(game_date.year) if game_date.month >= 10 else int(game_date.year) - 1
 
             row: dict[str, Any] = {
-                "game_id":    game_id,
-                "sport":      "nba",
-                "season":     season,
-                "game_date":  game_date,
-                "home_team":  home_abbr,
-                "away_team":  away_abbr,
+                "game_id": game_id,
+                "sport": "nba",
+                "season": season,
+                "game_date": game_date,
+                "home_team": home_abbr,
+                "away_team": away_abbr,
                 "home_score": h_pts,
                 "away_score": a_pts,
-                "total":      total,
-                "total_line": np.nan,   # filled below by proxy
+                "total": total,
+                "total_line": np.nan,  # filled below by proxy
                 "result_over": np.nan,
-                "venue":      f"{home_abbr}_arena",
+                "venue": f"{home_abbr}_arena",
             }
 
             # Raw box-score stats → historical schema
@@ -219,42 +217,42 @@ class DailyUpdater:
                 row[f"away_{stat_name}"] = float(away_stats.get(bscore_key, 0) or 0)
 
             # Derived advanced stats
-            row["home_possessions"]         = h_poss
-            row["away_possessions"]         = a_poss
+            row["home_possessions"] = h_poss
+            row["away_possessions"] = a_poss
             row["home_pointsPerPossession"] = h_pts / h_poss
             row["away_pointsPerPossession"] = a_pts / a_poss
-            row["home_trueShooting"]        = h_pts / max(1.0, 2 * (h_fga + 0.44 * h_fta))
-            row["away_trueShooting"]        = a_pts / max(1.0, 2 * (a_fga + 0.44 * a_fta))
-            row["home_offensiveRating"]     = 100.0 * h_pts / h_poss
-            row["away_offensiveRating"]     = 100.0 * a_pts / a_poss
-            row["home_defensiveRating"]     = 100.0 * a_pts / h_poss
-            row["away_defensiveRating"]     = 100.0 * h_pts / a_poss
-            row["home_pace"]                = h_poss
-            row["away_pace"]                = a_poss
-            row["home_assistRate"]          = float(home_stats.get("assists", 25)) / h_poss
-            row["away_assistRate"]          = float(away_stats.get("assists", 25)) / a_poss
-            row["home_drebRate"]            = h_dreb / max(1.0, h_dreb + a_oreb)
-            row["away_drebRate"]            = a_dreb / max(1.0, a_dreb + h_oreb)
-            row["home_ftRate"]              = h_fta / max(1.0, h_fga)
-            row["away_ftRate"]              = a_fta / max(1.0, a_fga)
-            row["home_threePointRate"]      = h_fg3a / max(1.0, h_fga)
-            row["away_threePointRate"]      = a_fg3a / max(1.0, a_fga)
-            row["home_netRating"]           = float(home_stats.get("plusMinusPoints", 0) or 0)
-            row["away_netRating"]           = float(away_stats.get("plusMinusPoints", 0) or 0)
+            row["home_trueShooting"] = h_pts / max(1.0, 2 * (h_fga + 0.44 * h_fta))
+            row["away_trueShooting"] = a_pts / max(1.0, 2 * (a_fga + 0.44 * a_fta))
+            row["home_offensiveRating"] = 100.0 * h_pts / h_poss
+            row["away_offensiveRating"] = 100.0 * a_pts / a_poss
+            row["home_defensiveRating"] = 100.0 * a_pts / h_poss
+            row["away_defensiveRating"] = 100.0 * h_pts / a_poss
+            row["home_pace"] = h_poss
+            row["away_pace"] = a_poss
+            row["home_assistRate"] = float(home_stats.get("assists", 25)) / h_poss
+            row["away_assistRate"] = float(away_stats.get("assists", 25)) / a_poss
+            row["home_drebRate"] = h_dreb / max(1.0, h_dreb + a_oreb)
+            row["away_drebRate"] = a_dreb / max(1.0, a_dreb + h_oreb)
+            row["home_ftRate"] = h_fta / max(1.0, h_fga)
+            row["away_ftRate"] = a_fta / max(1.0, a_fga)
+            row["home_threePointRate"] = h_fg3a / max(1.0, h_fga)
+            row["away_threePointRate"] = a_fg3a / max(1.0, a_fga)
+            row["home_netRating"] = float(home_stats.get("plusMinusPoints", 0) or 0)
+            row["away_netRating"] = float(away_stats.get("plusMinusPoints", 0) or 0)
 
             # Situational context
-            row["wind_speed_mph"]       = 0.0
-            row["temperature_f"]        = 72.0
-            row["is_dome"]              = 1.0
-            row["altitude_feet"]        = _ALTITUDE_MAP.get(home_abbr, 0.0)
-            row["is_playoff"]           = float("00424" in game_id or "00425" in game_id)
+            row["wind_speed_mph"] = 0.0
+            row["temperature_f"] = 72.0
+            row["is_dome"] = 1.0
+            row["altitude_feet"] = _ALTITUDE_MAP.get(home_abbr, 0.0)
+            row["is_playoff"] = float("00424" in game_id or "00425" in game_id)
 
             # Market signals (0 at training time; overridden at inference)
-            row["line_movement"]        = 0.0
-            row["public_over_pct"]      = 0.5
-            row["sharp_over_pct"]       = 0.5
-            row["ref_foul_rate"]        = 0.0
-            row["ump_walk_rate"]        = 0.0
+            row["line_movement"] = 0.0
+            row["public_over_pct"] = 0.5
+            row["sharp_over_pct"] = 0.5
+            row["ref_foul_rate"] = 0.0
+            row["ump_walk_rate"] = 0.0
 
             # Injury counts derived from box score comments
             row["home_key_players_out"] = float(h_injury.key_players_out)
@@ -263,7 +261,8 @@ class DailyUpdater:
             if h_injury.injured or a_injury.injured:
                 logger.info(
                     "Injuries %s: %s out=[%s] | %s out=[%s]",
-                    game_id, home_abbr,
+                    game_id,
+                    home_abbr,
                     ", ".join(p.name for p in h_injury.injured if p.is_key) or "none",
                     away_abbr,
                     ", ".join(p.name for p in a_injury.injured if p.is_key) or "none",
@@ -286,8 +285,12 @@ class DailyUpdater:
         try:
             import httpx
             from proedge.pipeline.ingestion.espn_nfl_fetcher import (
-                _fetch_scoreboard, _fetch_summary, _build_game_row, _compute_proxy_lines,
+                _fetch_scoreboard,
+                _fetch_summary,
+                _build_game_row,
+                _compute_proxy_lines,
             )
+
             season = target_date.year if target_date.month >= 9 else target_date.year - 1
             season_start = date(season, 9, 1)
             days_in = max(0, (target_date - season_start).days)
@@ -326,9 +329,13 @@ class DailyUpdater:
         try:
             import httpx
             from proedge.pipeline.ingestion.mlb_stats_fetcher import (
-                _fetch_team_map, _fetch_schedule, _fetch_boxscore,
-                _build_game_row, _compute_proxy_lines,
+                _fetch_team_map,
+                _fetch_schedule,
+                _fetch_boxscore,
+                _build_game_row,
+                _compute_proxy_lines,
             )
+
             date_str = target_date.strftime("%Y-%m-%d")
             season = target_date.year
 
@@ -431,6 +438,7 @@ class DailyUpdater:
     def _count_new_since_last_retrain(self) -> int:
         """Rough proxy: games in historical added after the active model was trained."""
         from proedge.pipeline.models.registry import ModelRegistry
+
         try:
             meta = ModelRegistry().load_meta(self.sport)
             trained_at = datetime.fromisoformat(meta.get("trained_at", "2000-01-01"))
@@ -455,6 +463,7 @@ class DailyUpdater:
         try:
             from proedge.db.models import InjuryReport
             from proedge.db.session import SyncSessionLocal
+
             with SyncSessionLocal() as session:
                 reports = [
                     InjuryReport(
@@ -500,7 +509,9 @@ class DailyUpdater:
 
                     result_over = actual_total > game.total_line
                     session.execute(
-                        sa_update(Game).where(Game.id == game.id).values(
+                        sa_update(Game)
+                        .where(Game.id == game.id)
+                        .values(
                             status="final",
                             home_score=int(row["home_score"]),
                             away_score=int(row["away_score"]),
@@ -508,18 +519,24 @@ class DailyUpdater:
                         )
                     )
 
-                    preds = session.execute(
-                        select(Prediction).where(
-                            Prediction.game_id == game.id,
-                            Prediction.settled_at.is_(None),
+                    preds = (
+                        session.execute(
+                            select(Prediction).where(
+                                Prediction.game_id == game.id,
+                                Prediction.settled_at.is_(None),
+                            )
                         )
-                    ).scalars().all()
+                        .scalars()
+                        .all()
+                    )
 
                     now = datetime.now(timezone.utc)
                     for pred in preds:
                         is_correct = (pred.predicted_direction == "over") == result_over
                         session.execute(
-                            sa_update(Prediction).where(Prediction.id == pred.id).values(
+                            sa_update(Prediction)
+                            .where(Prediction.id == pred.id)
+                            .values(
                                 actual_total=actual_total,
                                 closing_line=game.total_line,
                                 clv=0.0,
@@ -540,11 +557,13 @@ class DailyUpdater:
 
     def _retrain(self) -> dict:
         from proedge.pipeline.training.trainer import train
+
         logger.info("Auto-retraining %s after daily update", self.sport.upper())
         metrics = train(self.sport)
         try:
             from proedge.api.routers.predictions import _model_cache
             from proedge.pipeline.models.registry import ModelRegistry
+
             _model_cache[self.sport] = ModelRegistry().load(self.sport)
             logger.info("Model cache refreshed for %s after retrain", self.sport.upper())
         except Exception as exc:
