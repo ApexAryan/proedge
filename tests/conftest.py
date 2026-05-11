@@ -4,18 +4,19 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 
-os.environ.setdefault(
-    "DATABASE_URL", "postgresql+asyncpg://proedge:proedge@localhost:5432/proedge_test"
-)
-os.environ.setdefault("MODEL_REGISTRY_PATH", "/tmp/proedge_test_models")
-# Disable API key auth for all tests — force override so CI env doesn't block requests.
-os.environ["API_KEY"] = ""
-
 from proedge.config import get_settings
-
-get_settings.cache_clear()
-
 from proedge.pipeline.ingestion.stats import STAT_KEYS
+
+
+def pytest_configure(config):
+    """Set env vars and clear settings cache before any test modules are imported."""
+    os.environ.setdefault(
+        "DATABASE_URL", "postgresql+asyncpg://proedge:proedge@localhost:5432/proedge_test"
+    )
+    os.environ.setdefault("MODEL_REGISTRY_PATH", "/tmp/proedge_test_models")
+    # Disable API key auth — override CI env so auth middleware passes all test requests.
+    os.environ["API_KEY"] = ""
+    get_settings.cache_clear()
 
 
 @pytest.fixture
