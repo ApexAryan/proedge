@@ -157,17 +157,26 @@ class OverUnderEnsemble:
     def predict_with_intervals(
         self, X: pd.DataFrame
     ) -> list[dict[str, float]]:
-        """Returns list of {prob_over, prob_under, ci_lower, ci_upper, confidence}."""
-        probs_over = self.predict_proba(X)
+        """Returns list of {prob_over, prob_under, ci_lower, ci_upper, confidence}.
+
+        CI width = disagreement between XGB and LGB predictions after calibration.
+        Narrow when both models agree; wide when they diverge.
+        """
+        X_arr = X[self.feature_names].values
+        xgb_raw = self.xgb_model.predict_proba(X_arr)[:, 1]
+        lgb_raw = self.lgb_model.predict_proba(X_arr)[:, 1]
+        raw = self.xgb_weight * xgb_raw + self.lgb_weight * lgb_raw
+        probs_over = self.calibrator.transform(raw)
+
         results = []
-        for p in probs_over:
-            lo, hi = self.calibrator.prediction_interval(float(p))
+        for p, xr, lr in zip(probs_over, xgb_raw, lgb_raw):
+            half = float(abs(xr - lr)) / 2.0
             results.append({
                 "prob_over": round(float(p), 4),
                 "prob_under": round(1.0 - float(p), 4),
-                "ci_lower": round(lo, 4),
-                "ci_upper": round(hi, 4),
-                "confidence": round(abs(float(p) - 0.5) * 2, 4),  # 0=coin flip, 1=certain
+                "ci_lower": round(float(np.clip(p - half, 0.0, 1.0)), 4),
+                "ci_upper": round(float(np.clip(p + half, 0.0, 1.0)), 4),
+                "confidence": round(abs(float(p) - 0.5) * 2.0, 4),
             })
         return results
 

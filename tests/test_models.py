@@ -23,18 +23,11 @@ def test_calibrator_fit_transform():
     assert (probs >= 0).all() and (probs <= 1).all()
 
 
-def test_calibrator_prediction_interval():
-    rng = np.random.default_rng(1)
-    raw = rng.uniform(0, 1, 200)
-    labels = (raw > 0.5).astype(int)
-
+def test_calibrator_no_broken_prediction_interval():
+    # prediction_interval was removed — it produced degenerate [0, 1] intervals
+    # by computing residuals against binary labels. CIs now come from model disagreement.
     cal = IsotonicCalibrator()
-    cal.fit(raw, labels)
-
-    lo, hi = cal.prediction_interval(0.6)
-    assert lo <= 0.6 <= hi
-    assert 0.0 <= lo <= 1.0
-    assert 0.0 <= hi <= 1.0
+    assert not hasattr(cal, "prediction_interval")
 
 
 def test_calibrator_not_fitted_raises():
@@ -109,6 +102,8 @@ def test_ensemble_predict_with_intervals(trained_model, sample_feature_matrix):
         assert "ci_lower" in r and "ci_upper" in r
         assert abs(r["prob_over"] + r["prob_under"] - 1.0) < 1e-6
         assert r["ci_lower"] <= r["prob_over"] <= r["ci_upper"]
+        # Intervals must be non-degenerate — not the broken [0, 1] from binary residuals
+        assert r["ci_upper"] - r["ci_lower"] < 0.9
 
 
 def test_ensemble_evaluate_returns_metrics(trained_model, sample_feature_matrix):
