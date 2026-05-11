@@ -1,4 +1,4 @@
-"""Lines router — PrizePicks spreads, totals, and player projections."""
+"""Lines router — PrizePicks spreads, totals, player projections, and cross-source comparison."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from proedge.api.schemas import (
     GameLineResponse,
     GameSummaryResponse,
+    LineComparisonResponse,
     PlayerProjectionResponse,
     PrizePicksBoardResponse,
 )
@@ -120,6 +121,73 @@ async def get_prizepicks_game(sport: str, home_team: str, away_team: str):
         sport=sport_lower,
         props=matched_props,
         gl_list=matched_lines,
+    )
+
+
+# ── Cross-source comparison endpoints ────────────────────────────────────────
+
+
+@router.get(
+    "/compare/{sport}",
+    response_model=list[LineComparisonResponse],
+    summary="All games for a sport with lines from every source",
+    description=(
+        "Fetches game totals from The Odds API (sportsbook consensus), PrizePicks, "
+        "and Kalshi prediction markets in parallel and returns them side-by-side. "
+        "Results are cached 15 minutes. `pp_vs_book` and `kalshi_vs_book` show "
+        "discrepancies that can signal sharp vs. public disagreement."
+    ),
+)
+async def compare_lines_board(sport: str):
+    sport_lower = sport.lower()
+    if sport_lower not in ("nba", "nfl", "mlb"):
+        raise HTTPException(status_code=422, detail=f"Unsupported sport '{sport}'")
+
+    from proedge.config import get_settings
+    from proedge.pipeline.ingestion.line_aggregator import get_full_board
+
+    board = await get_full_board(sport_lower, get_settings().odds_api_key)
+    return [_comp_to_response(c) for c in board]
+
+
+@router.get(
+    "/compare/{sport}/{home_team}/{away_team}",
+    response_model=LineComparisonResponse,
+    summary="Line comparison for a specific matchup",
+)
+async def compare_lines_matchup(sport: str, home_team: str, away_team: str):
+    sport_lower = sport.lower()
+    if sport_lower not in ("nba", "nfl", "mlb"):
+        raise HTTPException(status_code=422, detail=f"Unsupported sport '{sport}'")
+
+    from proedge.config import get_settings
+    from proedge.pipeline.ingestion.line_aggregator import get_line_comparison
+
+    comp = await get_line_comparison(
+        sport_lower, home_team, away_team, get_settings().odds_api_key
+    )
+    if not comp.sources:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No lines found for {home_team} vs {away_team} ({sport})",
+        )
+    return _comp_to_response(comp)
+
+
+def _comp_to_response(comp) -> LineComparisonResponse:
+    return LineComparisonResponse(
+        sport=comp.sport,
+        home_team=comp.home_team,
+        away_team=comp.away_team,
+        book_line=comp.book_line,
+        prizepicks_line=comp.prizepicks_line,
+        kalshi_line=comp.kalshi_line,
+        kalshi_nearest_threshold=comp.kalshi_nearest_threshold,
+        kalshi_nearest_prob=comp.kalshi_nearest_prob,
+        consensus_line=comp.consensus_line,
+        pp_vs_book=comp.pp_vs_book,
+        kalshi_vs_book=comp.kalshi_vs_book,
+        sources=comp.sources,
     )
 
 

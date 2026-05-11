@@ -11,7 +11,7 @@ import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from proedge.api.schemas import PredictionRequest, PredictionResponse, SettleRequest, SettleResponse
+from proedge.api.schemas import LineComparisonResponse, PredictionRequest, PredictionResponse, SettleRequest, SettleResponse
 from proedge.db.repositories import AlertRepository, GameRepository, PredictionRepository
 from proedge.db.session import get_db
 from proedge.monitoring.alerts import get_alert_manager
@@ -28,11 +28,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/predictions", tags=["predictions"])
 _registry = ModelRegistry()
 _model_cache: dict[str, object] = {}
-
-# Odds board cache: sport → (timestamp, list[GameOdds])
-# Refreshed at most once per 15 minutes to stay within the 500 req/month free quota.
-_ODDS_CACHE_TTL = 900  # 15 minutes
-_odds_cache: dict[str, tuple[float, list]] = {}
 
 
 def _get_model(sport: str):
@@ -62,33 +57,18 @@ async def create_prediction(req: PredictionRequest, db: AsyncSession = Depends(g
     feature_medians: dict[str, float] = meta.get("feature_medians", {})
 
     from proedge.config import get_settings
-    from proedge.pipeline.ingestion.odds_fetcher import OddsFetcher
+    from proedge.pipeline.ingestion.line_aggregator import get_line_comparison
 
     _settings = get_settings()
-    if _settings.odds_api_key:
-        try:
-            cached = _odds_cache.get(sport)
-            now = time.time()
-            if cached is None or (now - cached[0]) > _ODDS_CACHE_TTL:
-                board = OddsFetcher(api_key=_settings.odds_api_key, timeout=5.0).fetch_game_odds(
-                    sport
-                )
-                _odds_cache[sport] = (now, board)
-            else:
-                board = cached[1]
-
-            home_lower = req.home_team.lower()
-            away_lower = req.away_team.lower()
-            for game in board:
-                ht, at = game.home_team.lower(), game.away_team.lower()
-                if (home_lower in ht or ht in home_lower) and (
-                    away_lower in at or at in away_lower
-                ):
-                    if game.total_line is not None:
-                        req = req.model_copy(update={"total_line": game.total_line})
-                    break
-        except Exception:
-            pass  # best-effort; keep caller-supplied line
+    line_comp = None
+    try:
+        line_comp = await get_line_comparison(
+            sport, req.home_team, req.away_team, _settings.odds_api_key
+        )
+        if line_comp.consensus_line is not None:
+            req = req.model_copy(update={"total_line": line_comp.consensus_line})
+    except Exception:
+        pass  # best-effort; keep caller-supplied line
 
     # Auto-populate injury counts from ESPN if caller didn't provide them
     home_out = req.home_key_players_out
@@ -109,7 +89,7 @@ async def create_prediction(req: PredictionRequest, db: AsyncSession = Depends(g
             pass  # injury fetch is best-effort; fall back to 0
 
     # Build inference feature row with available context
-    X = _build_inference_features(req, feature_names, home_out, away_out, feature_medians)
+    X = _build_inference_features(req, feature_names, home_out, away_out, feature_medians, line_comp)
 
     # Validate feature dimensions — warn on mismatch to surface train-serve skew
     expected = set(feature_names)
@@ -206,6 +186,23 @@ async def create_prediction(req: PredictionRequest, db: AsyncSession = Depends(g
     except Exception:
         pass  # alerts are best-effort
 
+    line_comparison_resp = None
+    if line_comp is not None and line_comp.sources:
+        line_comparison_resp = LineComparisonResponse(
+            sport=line_comp.sport,
+            home_team=line_comp.home_team,
+            away_team=line_comp.away_team,
+            book_line=line_comp.book_line,
+            prizepicks_line=line_comp.prizepicks_line,
+            kalshi_line=line_comp.kalshi_line,
+            kalshi_nearest_threshold=line_comp.kalshi_nearest_threshold,
+            kalshi_nearest_prob=line_comp.kalshi_nearest_prob,
+            consensus_line=line_comp.consensus_line,
+            pp_vs_book=line_comp.pp_vs_book,
+            kalshi_vs_book=line_comp.kalshi_vs_book,
+            sources=line_comp.sources,
+        )
+
     return PredictionResponse(
         prediction_id=db_pred.id,
         game_id=game.id,
@@ -223,6 +220,7 @@ async def create_prediction(req: PredictionRequest, db: AsyncSession = Depends(g
         confidence=pred["confidence"],
         latency_ms=latency_ms,
         features=features_snapshot,
+        line_comparison=line_comparison_resp,
     )
 
 
@@ -396,6 +394,7 @@ def _build_inference_features(
     home_key_out: int = 0,
     away_key_out: int = 0,
     feature_medians: dict[str, float] | None = None,
+    line_comp=None,
 ) -> pd.DataFrame:
     """
     Constructs a single-row feature DataFrame for inference.
@@ -454,5 +453,15 @@ def _build_inference_features(
     # Legacy
     row["home_injury_impact"] = req.home_injury_impact
     row["away_injury_impact"] = req.away_injury_impact
+
+    # GROUP F — cross-source line discrepancy signals
+    # These are only non-zero when live line data is available at inference time.
+    # The model ignores unknown features for now; they become active after the next retrain.
+    if line_comp is not None:
+        row["pp_vs_book"] = line_comp.pp_vs_book or 0.0
+        row["kalshi_vs_book"] = line_comp.kalshi_vs_book or 0.0
+        row["kalshi_implied_prob"] = line_comp.kalshi_nearest_prob or 0.5
+        row["has_kalshi"] = float(line_comp.kalshi_line is not None)
+        row["has_prizepicks"] = float(line_comp.prizepicks_line is not None)
 
     return pd.DataFrame([row])

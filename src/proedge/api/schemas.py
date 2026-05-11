@@ -77,6 +77,7 @@ class PredictionResponse(BaseModel):
     confidence: float
     latency_ms: float
     features: dict | None = None
+    line_comparison: "LineComparisonResponse | None" = None
 
 
 class ModelPerformanceResponse(BaseModel):
@@ -151,6 +152,23 @@ class PrizePicksBoardResponse(BaseModel):
     player_prop_count: int
     game_line_count: int
     games: list[GameSummaryResponse]
+
+
+class LineComparisonResponse(BaseModel):
+    """Cross-source line comparison for a specific matchup."""
+
+    sport: str
+    home_team: str
+    away_team: str
+    book_line: float | None = None
+    prizepicks_line: float | None = None
+    kalshi_line: float | None = None
+    kalshi_nearest_threshold: int | None = None
+    kalshi_nearest_prob: float | None = None
+    consensus_line: float | None = None
+    pp_vs_book: float | None = None
+    kalshi_vs_book: float | None = None
+    sources: list[str] = Field(default_factory=list)
 
 
 class SettleRequest(BaseModel):
