@@ -22,7 +22,7 @@ settings = get_settings()
 
 HOLDOUT_FRAC = 0.15  # ~last 15% of games for final evaluation
 VAL_FRAC = 0.15  # validation set carved from training portion
-MIN_TRAIN_GAMES = 500
+MIN_TRAIN_GAMES = 200
 
 
 def train(sport: str, xgb_weight: float = 0.5, trigger_reason: str = "manual") -> dict:

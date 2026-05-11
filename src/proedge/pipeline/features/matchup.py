@@ -18,39 +18,21 @@ def add_matchup_features(
     """
     df = df.sort_values("game_date").copy()
 
-    # Build opponent defensive allowed averages
-    opp_allowed: dict[str, dict[str, float]] = {}  # team → {stat: rolling_allowed}
-
-    for team in df["away_team"].unique():
-        opp_allowed[team] = {}
-        mask_home = df["home_team"] == team
-        for col in stat_cols:
-            away_col = f"away_{col}"
-            if away_col in df.columns:
-                allowed = (
-                    df.loc[mask_home, away_col]
-                    .shift(1)
-                    .rolling(opponent_window, min_periods=1)
-                    .mean()
-                )
-                opp_allowed[team][col] = allowed
-
-    # League averages per stat
-    league_avg: dict[str, float] = {}
+    # Per-row expanding league average — only uses games played before each row.
+    # Avoids leaking future scoring levels into the ratio denominator.
+    expanding_league_avg: dict[str, pd.Series] = {}
     for col in stat_cols:
         home_col, away_col = f"home_{col}", f"away_{col}"
-        vals = []
-        if home_col in df.columns:
-            vals.append(df[home_col])
-        if away_col in df.columns:
-            vals.append(df[away_col])
-        if vals:
-            league_avg[col] = float(pd.concat(vals).mean())
+        cols_present = [c for c in [home_col, away_col] if c in df.columns]
+        if cols_present:
+            game_mean = df[cols_present].mean(axis=1)
+            expanding = game_mean.expanding().mean().shift(1)
+            expanding_league_avg[col] = expanding.fillna(game_mean.mean())
 
-    # Opponent defensive rating relative to league average
+    # Opponent defensive rating relative to expanding league average
     for col in stat_cols:
-        avg = league_avg.get(col, 1.0) or 1.0
-        df[f"opp_def_{col}_ratio"] = 1.0  # default: league average
+        avg_series = expanding_league_avg.get(col, pd.Series(1.0, index=df.index))
+        df[f"opp_def_{col}_ratio"] = 1.0
         for team in df["home_team"].unique():
             mask = df["home_team"] == team
             away_col = f"away_{col}"
@@ -58,7 +40,8 @@ def add_matchup_features(
                 allowed_mean = (
                     df.loc[mask, away_col].shift(1).rolling(opponent_window, min_periods=1).mean()
                 )
-                df.loc[mask, f"opp_def_{col}_ratio"] = allowed_mean / avg
+                safe_avg = avg_series.loc[mask].replace(0, np.nan).fillna(1.0)
+                df.loc[mask, f"opp_def_{col}_ratio"] = allowed_mean / safe_avg
 
     # H2H head-to-head over rate
     df["h2h_over_rate"] = _compute_h2h_over_rate(df)

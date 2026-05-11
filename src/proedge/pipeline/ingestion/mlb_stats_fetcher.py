@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
-import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import httpx
 import numpy as np
@@ -319,53 +319,56 @@ def _compute_proxy_lines(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
 
 def fetch_mlb_games(
     seasons: list[int] | None = None,
-    delay: float = 0.3,
+    workers: int = 20,
 ) -> pd.DataFrame:
     """
     Fetch MLB regular-season game data from the official MLB Stats API for the
     given seasons and return a DataFrame matching the HistoricalLoader schema.
 
-    Parameters
-    ----------
-    seasons:
-        Calendar years to fetch (e.g. [2022, 2023]). Defaults to 2019-2023.
-    delay:
-        Seconds to sleep between boxscore requests to respect the API.
-
-    Returns
-    -------
-    pd.DataFrame
-        One row per game with all columns required by HistoricalLoader.
-        Returns an empty DataFrame if all fetches fail.
+    Boxscores are fetched in parallel (default 20 workers) to cut wall-clock
+    time from ~60 minutes (sequential 0.3s delay) to ~2-3 minutes.
     """
     seasons = seasons or _DEFAULT_SEASONS
     logger.info("Fetching real MLB data for seasons: %s", seasons)
 
-    rows: list[dict] = []
-
+    # Phase 1 — collect all schedule entries across seasons (fast, serial)
+    all_games: list[tuple[dict, int]] = []  # (game_dict, season)
     with httpx.Client(follow_redirects=True) as client:
-        # Build team ID → abbreviation lookup once
         team_map = _fetch_team_map(client)
         logger.info("Loaded %d MLB team abbreviations", len(team_map))
 
         for season in seasons:
             start_date, end_date = _SEASON_DATES.get(season, (f"{season}-04-01", f"{season}-10-01"))
             logger.info("  → MLB season %d (%s – %s)", season, start_date, end_date)
-
             games = _fetch_schedule(client, start_date, end_date)
             logger.info("    Found %d final games in schedule", len(games))
+            for g in games:
+                if g.get("gamePk"):
+                    all_games.append((g, season))
 
-            for game in games:
-                game_pk = game.get("gamePk")
-                if not game_pk:
-                    continue
+    logger.info("Fetching %d boxscores with %d workers...", len(all_games), workers)
 
-                boxscore = _fetch_boxscore(client, int(game_pk))
-                time.sleep(delay)
+    # Phase 2 — fetch all boxscores in parallel
+    def _fetch_one(args: tuple[dict, int]) -> dict | None:
+        game, season = args
+        with httpx.Client(follow_redirects=True) as c:
+            boxscore = _fetch_boxscore(c, int(game["gamePk"]))
+        return _build_game_row(game, boxscore, team_map, season)
 
-                row = _build_game_row(game, boxscore, team_map, season)
+    rows: list[dict] = []
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(_fetch_one, item): item for item in all_games}
+        done = 0
+        for fut in as_completed(futures):
+            done += 1
+            if done % 500 == 0:
+                logger.info("  boxscores fetched: %d / %d", done, len(all_games))
+            try:
+                row = fut.result()
                 if row is not None:
                     rows.append(row)
+            except Exception as exc:
+                logger.warning("Boxscore worker error: %s", exc)
 
     if not rows:
         logger.error("No MLB game rows collected — returning empty DataFrame")
@@ -373,10 +376,7 @@ def fetch_mlb_games(
 
     df = pd.DataFrame(rows)
     df["game_date"] = pd.to_datetime(df["game_date"]).dt.tz_localize(None)
-
-    # De-duplicate by game_id in case schedule pages overlap
     df = df.drop_duplicates(subset=["game_id"]).sort_values("game_date").reset_index(drop=True)
-
     df = _compute_proxy_lines(df)
 
     logger.info(
