@@ -177,7 +177,9 @@ function switchTab(name) {
 
 async function fetchJSON(path) {
   try {
-    const r = await fetch(API + path);
+    const r = await fetch(API + path, {
+      headers: { 'X-API-Key': 'NocmCzj62LHRIwuK8LdeZb_AV2TcandimUn82TanFhU' }
+    });
     if (!r.ok) return null;
     return await r.json();
   } catch { return null; }
