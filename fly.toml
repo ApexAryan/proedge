@@ -1,0 +1,45 @@
+# fly.toml — ProEdge Analytics API
+app = "proedge-api"
+primary_region = "iad"
+
+[build]
+
+[deploy]
+  release_command = "alembic upgrade head"
+
+[env]
+  API_HOST                   = "0.0.0.0"
+  API_PORT                   = "8000"
+  MODEL_REGISTRY_PATH        = "/data/models"
+  ACTIVE_MODEL_VERSION       = "latest"
+  DRIFT_PSI_THRESHOLD        = "0.25"
+  DRIFT_CHECK_INTERVAL_HOURS = "24"
+  ALERT_CONFIDENCE_THRESHOLD = "0.65"
+  ESPN_API_BASE_URL          = "https://site.api.espn.com/apis/site/v2/sports"
+
+[http_service]
+  internal_port       = 8000
+  force_https         = true
+  auto_stop_machines  = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type       = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+  [[http_service.checks]]
+    interval     = "15s"
+    timeout      = "10s"
+    grace_period = "30s"
+    path         = "/health"
+    method       = "GET"
+
+[[vm]]
+  size   = "shared-cpu-1x"
+  memory = "1gb"
+
+[[mounts]]
+  source      = "proedge_data"
+  destination = "/data"
