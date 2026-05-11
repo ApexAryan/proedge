@@ -1,5 +1,5 @@
 """Prometheus metrics for API latency, model performance, and prediction confidence."""
-from prometheus_client import Counter, Gauge, Histogram, Summary
+from prometheus_client import Counter, Gauge, Histogram
 
 # ── API metrics ───────────────────────────────────────────────────────────────
 
@@ -72,13 +72,34 @@ RETRAIN_COUNTER = Counter(
 
 # ── System metrics ────────────────────────────────────────────────────────────
 
-DB_POOL_CONNECTIONS = Gauge(
-    "proedge_db_pool_connections",
-    "Active database pool connections",
-)
-
 ACTIVE_MODEL_VERSION = Gauge(
     "proedge_active_model_info",
     "Currently active model version (label only)",
     ["sport", "version"],
+)
+
+# ── Data quality metrics ──────────────────────────────────────────────────────
+
+SYNTHETIC_DATA_TOTAL = Counter(
+    "proedge_synthetic_data_total",
+    "Number of times synthetic data was used for model training (real data unavailable)",
+    ["sport"],
+)
+
+DATA_FETCH_ERRORS = Counter(
+    "proedge_data_fetch_errors_total",
+    "Data fetcher failures by sport and source",
+    ["sport", "source"],
+)
+
+FEATURE_CACHE_HITS = Counter(
+    "proedge_feature_cache_total",
+    "Feature cache hits and misses",
+    ["result"],  # "hit" or "miss"
+)
+
+INFERENCE_FEATURE_MISSING = Counter(
+    "proedge_inference_feature_missing_total",
+    "Features present in training but missing at inference time",
+    ["sport"],
 )

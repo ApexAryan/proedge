@@ -23,8 +23,6 @@ dependencies = [
     "prometheus-client>=0.20.0",
     "joblib>=1.4.0",
     "scipy>=1.13.0",
-    "psutil>=5.9.8",
-    "geopy>=2.4.1",
     "psycopg2-binary>=2.9.9",
     "pyarrow>=16.0.0",
     "nba_api>=1.4.1",
@@ -45,7 +43,19 @@ where = ["src"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = "--cov=proedge --cov-report=term-missing --cov-fail-under=40"
+
+[tool.coverage.run]
+omit = ["*/tests/*", "*/alembic/*"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+disallow_untyped_defs = false
+warn_return_any = false
+warn_unused_ignores = true
+no_implicit_optional = true

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProEdge Analytics</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --border: #2a2d3e;
+    --accent: #6c63ff;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --over: #22c55e;
+    --under: #3b82f6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; }
+  header { background: var(--card); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 18px; font-weight: 700; color: #fff; }
+  header span { font-size: 12px; color: var(--muted); background: var(--border); padding: 2px 8px; border-radius: 12px; }
+  .tabs { display: flex; gap: 4px; padding: 16px 24px 0; border-bottom: 1px solid var(--border); }
+  .tab { padding: 8px 16px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); font-weight: 500; transition: all .15s; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab:hover { color: var(--text); }
+  main { padding: 24px; max-width: 1400px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .card-title { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 8px; }
+  .card-value { font-size: 28px; font-weight: 700; color: #fff; }
+  .card-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .card-value.green { color: var(--green); }
+  .card-value.red { color: var(--red); }
+  .card-value.yellow { color: var(--yellow); }
+  .section { margin-bottom: 28px; }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .badge { font-size: 10px; background: var(--border); color: var(--muted); padding: 2px 6px; border-radius: 4px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 12px; border-bottom: 1px solid #1e2130; font-size: 13px; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #1e2130; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .pill.over { background: #14532d; color: var(--over); }
+  .pill.under { background: #1e3a5f; color: var(--under); }
+  .pill.correct { background: #14532d; color: var(--green); }
+  .pill.wrong { background: #450a0a; color: var(--red); }
+  .pill.pending { background: var(--border); color: var(--muted); }
+  .clv-pos { color: var(--green); font-weight: 600; }
+  .clv-neg { color: var(--red); font-weight: 600; }
+  .clv-null { color: var(--muted); }
+  .conf-bar { display: flex; align-items: center; gap: 8px; }
+  .conf-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .conf-fill { height: 100%; border-radius: 2px; background: var(--accent); }
+  .alert-row td:first-child { color: var(--accent); font-weight: 600; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .dot-green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .dot-yellow { background: var(--yellow); }
+  .dot-red { background: var(--red); }
+  .empty { color: var(--muted); text-align: center; padding: 32px; font-size: 13px; }
+  .refresh-btn { margin-left: auto; font-size: 12px; color: var(--muted); background: var(--border); border: none; padding: 4px 10px; border-radius: 6px; cursor: pointer; }
+  .refresh-btn:hover { color: var(--text); }
+  #sport-filter { background: var(--border); border: none; color: var(--text); padding: 4px 10px; border-radius: 6px; font-size: 12px; margin-left: 8px; }
+  .model-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .model-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .model-sport { font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 12px; }
+  .model-sport.nba { color: #c9a227; }
+  .model-sport.nfl { color: #4a9eff; }
+  .model-sport.mlb { color: #e74c3c; }
+  .metric-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .metric-row:last-child { border-bottom: none; }
+  .metric-label { color: var(--muted); font-size: 12px; }
+  .metric-val { font-weight: 600; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 3v18h18" stroke="#6c63ff" stroke-width="2" stroke-linecap="round"/><path d="M7 16l4-4 4 4 4-7" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <h1>ProEdge Analytics</h1>
+  <span id="last-updated">Loading…</span>
+  <button class="refresh-btn" onclick="loadAll()">Refresh</button>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('overview')">Overview</div>
+  <div class="tab" onclick="switchTab('predictions')">Predictions</div>
+  <div class="tab" onclick="switchTab('alerts')">Alerts</div>
+  <div class="tab" onclick="switchTab('models')">Models</div>
+</div>
+
+<main>
+
+<!-- OVERVIEW TAB -->
+<div id="tab-overview">
+  <div class="grid" id="overview-stats">
+    <div class="card"><div class="card-title">Total Predictions</div><div class="card-value" id="stat-total">—</div><div class="card-sub">all sports</div></div>
+    <div class="card"><div class="card-title">Settled / Correct</div><div class="card-value" id="stat-accuracy">—</div><div class="card-sub" id="stat-accuracy-sub">resolved predictions</div></div>
+    <div class="card"><div class="card-title">Avg CLV</div><div class="card-value" id="stat-clv">—</div><div class="card-sub">settled predictions</div></div>
+    <div class="card"><div class="card-title">Active Alerts</div><div class="card-value" id="stat-alerts">—</div><div class="card-sub">≥ confidence threshold</div></div>
+  </div>
+  <div class="section">
+    <div class="section-title">Training Status</div>
+    <div id="training-status-cards" class="model-grid"></div>
+  </div>
+</div>
+
+<!-- PREDICTIONS TAB -->
+<div id="tab-predictions" style="display:none">
+  <div class="section">
+    <div class="section-title">
+      Recent Predictions
+      <select id="sport-filter" onchange="loadPredictions()">
+        <option value="">All Sports</option>
+        <option value="nba">NBA</option>
+        <option value="nfl">NFL</option>
+        <option value="mlb">MLB</option>
+      </select>
+      <span class="badge" id="pred-count">0</span>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table>
+        <thead><tr>
+          <th>Game</th><th>Sport</th><th>Direction</th><th>Confidence</th>
+          <th>Prob Over</th><th>Result</th><th>CLV</th><th>Time</th>
+        </tr></thead>
+        <tbody id="pred-table-body"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ALERTS TAB -->
+<div id="tab-alerts" style="display:none">
+  <div class="section">
+    <div class="section-title">High-Confidence Alerts <span class="badge" id="alert-count">0</span></div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table>
+        <thead><tr>
+          <th>Sport</th><th>Matchup</th><th>Pick</th><th>Confidence</th><th>Edge</th><th>Game Date</th><th>Fired</th>
+        </tr></thead>
+        <tbody id="alert-table-body"><tr><td colspan="7" class="empty">No alerts yet</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODELS TAB -->
+<div id="tab-models" style="display:none">
+  <div class="section">
+    <div class="section-title">Active Model Performance</div>
+    <div id="model-cards" class="model-grid"></div>
+  </div>
+</div>
+
+</main>
+
+<script>
+const API = '';  // relative — same origin
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const names = ['overview','predictions','alerts','models'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  ['overview','predictions','alerts','models'].forEach(n => {
+    document.getElementById(`tab-${n}`).style.display = n === name ? '' : 'none';
+  });
+  if (name === 'predictions') loadPredictions();
+  if (name === 'alerts') loadAlerts();
+  if (name === 'models') loadModels();
+}
+
+async function fetchJSON(path) {
+  try {
+    const r = await fetch(API + path);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+function fmt(v, digits=1) {
+  if (v == null) return '—';
+  return Number(v).toFixed(digits);
+}
+
+function timeAgo(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const diff = (Date.now() - d) / 1000;
+  if (diff < 60) return `${Math.round(diff)}s ago`;
+  if (diff < 3600) return `${Math.round(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.round(diff/3600)}h ago`;
+  return d.toLocaleDateString();
+}
+
+async function loadOverview() {
+  // Training status
+  const status = await fetchJSON('/training/status');
+  const container = document.getElementById('training-status-cards');
+  if (status) {
+    container.innerHTML = Object.entries(status).map(([sport, s]) => `
+      <div class="model-card">
+        <div class="model-sport ${sport}">${sport.toUpperCase()}</div>
+        <div class="metric-row"><span class="metric-label">Last Update</span><span class="metric-val">${s.last_update_date || '—'}</span></div>
+        <div class="metric-row"><span class="metric-label">Games Added</span><span class="metric-val">${s.last_update_games_added ?? '—'}</span></div>
+        <div class="metric-row"><span class="metric-label">Model Version</span><span class="metric-val" style="font-size:11px">${s.last_retrain_version || '—'}</span></div>
+        <div class="metric-row"><span class="metric-label">Total Games</span><span class="metric-val">${s.total_historical_games ?? '—'}</span></div>
+      </div>
+    `).join('');
+  }
+
+  // Predictions summary
+  const preds = await fetchJSON('/predictions/recent?limit=200');
+  if (preds) {
+    document.getElementById('stat-total').textContent = preds.length;
+    const settled = preds.filter(p => p.is_correct != null);
+    const correct = settled.filter(p => p.is_correct).length;
+    if (settled.length > 0) {
+      const acc = (correct / settled.length * 100).toFixed(1);
+      document.getElementById('stat-accuracy').textContent = `${acc}%`;
+      document.getElementById('stat-accuracy').className = `card-value ${parseFloat(acc) >= 52 ? 'green' : 'yellow'}`;
+      document.getElementById('stat-accuracy-sub').textContent = `${correct}/${settled.length} settled`;
+    }
+    const clvs = preds.filter(p => p.clv != null).map(p => p.clv);
+    if (clvs.length > 0) {
+      const avg = clvs.reduce((a,b)=>a+b,0)/clvs.length;
+      document.getElementById('stat-clv').textContent = (avg>=0?'+':'')+avg.toFixed(2);
+      document.getElementById('stat-clv').className = `card-value ${avg>=0?'green':'red'}`;
+    }
+  }
+
+  // Alerts
+  const alerts = await fetchJSON('/predictions/alerts/recent?limit=200');
+  if (alerts) {
+    document.getElementById('stat-alerts').textContent = alerts.length;
+  }
+}
+
+async function loadPredictions() {
+  const sport = document.getElementById('sport-filter').value;
+  const url = `/predictions/recent?limit=100${sport ? '&sport='+sport : ''}`;
+  const preds = await fetchJSON(url);
+  const tbody = document.getElementById('pred-table-body');
+  if (!preds || preds.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">No predictions yet</td></tr>';
+    return;
+  }
+  document.getElementById('pred-count').textContent = preds.length;
+  tbody.innerHTML = preds.map(p => {
+    const dir = p.predicted_direction;
+    const clvVal = p.clv;
+    const clvStr = clvVal != null ? `<span class="${clvVal>=0?'clv-pos':'clv-neg'}">${clvVal>=0?'+':''}${clvVal.toFixed(1)}</span>` : '<span class="clv-null">—</span>';
+    const result = p.is_correct == null
+      ? '<span class="pill pending">Pending</span>'
+      : p.is_correct
+        ? '<span class="pill correct">Win</span>'
+        : '<span class="pill wrong">Loss</span>';
+    const confPct = Math.round((p.confidence||0)*100);
+    return `<tr>
+      <td>${p.game_id ? p.game_id.slice(-8) : '—'}</td>
+      <td><b>${(p.sport||'').toUpperCase()}</b></td>
+      <td><span class="pill ${dir}">${dir.toUpperCase()}</span></td>
+      <td><div class="conf-bar"><div class="conf-track"><div class="conf-fill" style="width:${confPct}%"></div></div>${confPct}%</div></td>
+      <td>${fmt(p.prob_over*100,1)}%</td>
+      <td>${result}</td>
+      <td>${clvStr}</td>
+      <td style="color:var(--muted)">${timeAgo(p.predicted_at)}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadAlerts() {
+  const alerts = await fetchJSON('/predictions/alerts/recent?limit=100');
+  const tbody = document.getElementById('alert-table-body');
+  if (!alerts || alerts.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">No high-confidence alerts yet</td></tr>';
+    return;
+  }
+  document.getElementById('alert-count').textContent = alerts.length;
+  tbody.innerHTML = alerts.map(a => `<tr class="alert-row">
+    <td>${a.sport}</td>
+    <td>${a.home_team} vs ${a.away_team}</td>
+    <td><span class="pill ${a.direction}">${a.direction.toUpperCase()} ${a.total_line}</span></td>
+    <td>${Math.round(a.confidence*100)}%</td>
+    <td>${fmt(a.edge*100,1)}%</td>
+    <td>${a.game_date}</td>
+    <td><span class="status-dot ${a.fired?'dot-green':'dot-yellow'}"></span>${a.fired?'Sent':'Queued'}</td>
+  </tr>`).join('');
+}
+
+async function loadModels() {
+  const perf = await fetchJSON('/models/performance');
+  const live = await fetchJSON('/models/accuracy/live');
+  const container = document.getElementById('model-cards');
+  if (!perf || perf.length === 0) {
+    container.innerHTML = '<div class="empty">No trained models found. Run training first.</div>';
+    return;
+  }
+  // Group latest per sport
+  const byVersion = {};
+  perf.forEach(m => {
+    if (!byVersion[m.sport] || m.trained_at > byVersion[m.sport].trained_at) byVersion[m.sport] = m;
+  });
+  container.innerHTML = Object.entries(byVersion).map(([sport, m]) => {
+    const liveAcc = live && live[sport] ? live[sport] : null;
+    const acc = m.accuracy != null ? (m.accuracy*100).toFixed(1)+'%' : '—';
+    const auc = m.brier_score != null ? fmt(m.brier_score, 4) : '—';
+    const ll = m.log_loss != null ? fmt(m.log_loss, 4) : '—';
+    const liveStr = liveAcc && liveAcc.total > 0 ? `${(liveAcc.accuracy*100).toFixed(1)}% (${liveAcc.total} bets)` : 'No resolved bets';
+    return `<div class="model-card">
+      <div class="model-sport ${sport}">${sport.toUpperCase()}</div>
+      <div class="metric-row"><span class="metric-label">Version</span><span class="metric-val" style="font-size:11px">${m.version}</span></div>
+      <div class="metric-row"><span class="metric-label">Holdout Accuracy</span><span class="metric-val" style="color:${parseFloat(acc)>=52?'var(--green)':'var(--yellow)'}">${acc}</span></div>
+      <div class="metric-row"><span class="metric-label">Brier Score</span><span class="metric-val">${auc}</span></div>
+      <div class="metric-row"><span class="metric-label">Log Loss</span><span class="metric-val">${ll}</span></div>
+      <div class="metric-row"><span class="metric-label">Training Games</span><span class="metric-val">${m.training_games ?? '—'}</span></div>
+      <div class="metric-row"><span class="metric-label">Features</span><span class="metric-val">${m.feature_count ?? '—'}</span></div>
+      <div class="metric-row"><span class="metric-label">Live Accuracy</span><span class="metric-val">${liveStr}</span></div>
+    </div>`;
+  }).join('');
+}
+
+async function loadAll() {
+  document.getElementById('last-updated').textContent = 'Refreshing…';
+  await loadOverview();
+  document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+loadAll();
+setInterval(loadAll, 60000);  // auto-refresh every minute
+</script>
+</body>
+</html>

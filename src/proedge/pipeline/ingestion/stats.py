@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime
 from typing import Any
 
 import pandas as pd
@@ -27,12 +26,10 @@ STAT_KEYS: dict[str, list[str]] = {
         "pointsAllowed", "turnovers", "sacks", "thirdDownConversion",
         "redZoneEfficiency", "timeOfPossession",
         # Advanced offense
-        "yardsPerPlay", "redZoneConvRate", "explosivePlayRate",
+        "yardsPerPlay", "redZoneConvRate",
         "fourthDownConversion", "penaltyYards",
         # Defensive / tempo
         "pressureRate", "secondsPerPlay",
-        # Derived
-        "expectedPointsAdded",
     ],
     "nba": [
         # Basic box score
@@ -57,9 +54,8 @@ STAT_KEYS: dict[str, list[str]] = {
         "runsScored", "runsAllowed", "hits", "errors", "walks",
         "strikeouts", "era", "whip", "battingAvg", "onBasePct",
         "sluggingPct", "ops", "homeRuns",
-        # Advanced
-        "kBbRatio", "barrelRate", "exitVelocity",
-        "groundBallRate", "flyBallRate", "bullpenFatigue",
+        # Advanced — only fields available from MLB Stats API boxscore
+        "kBbRatio", "groundBallRate", "flyBallRate",
     ],
 }
 
@@ -146,10 +142,9 @@ _MOCK_RANGES: dict[str, dict[str, tuple[float, float]]] = {
     "nfl": {k: v for k, v in zip(STAT_KEYS["nfl"], [
         (150, 400), (80, 200), (40, 150), (14, 38), (14, 38),
         (0, 4), (0, 6), (0.3, 0.55), (0.4, 0.7), (25, 35),
-        (4.5, 6.5), (0.45, 0.70), (0.08, 0.20),
+        (4.5, 6.5), (0.45, 0.70),
         (0.35, 0.60), (30, 90),
         (0.18, 0.35), (25, 32),
-        (-2.0, 2.0),
     ])},
     "nba": {k: v for k, v in zip(STAT_KEYS["nba"], [
         (95, 130), (40, 55), (20, 30), (5, 12), (4, 8),
@@ -167,8 +162,7 @@ _MOCK_RANGES: dict[str, dict[str, tuple[float, float]]] = {
         (2, 9), (2, 9), (5, 14), (0, 3), (2, 6),
         (5, 12), (2.5, 5.5), (1.0, 1.6), (0.220, 0.290),
         (0.300, 0.380), (0.350, 0.480), (0.650, 0.850), (0, 3),
-        (2.0, 4.5), (0.05, 0.12), (85, 95),
-        (0.40, 0.55), (0.30, 0.45), (0, 3),
+        (2.0, 4.5), (0.40, 0.55), (0.30, 0.45),
     ])},
 }
 

@@ -1,9 +1,8 @@
 import uuid
-from datetime import datetime
 
 from sqlalchemy import (
     Boolean, Column, DateTime, Float, ForeignKey,
-    Integer, String, func, text,
+    Integer, String, func,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, relationship
@@ -51,6 +50,10 @@ class Prediction(Base):
     predicted_at = Column(DateTime(timezone=True), server_default=func.now())
     is_correct = Column(Boolean, nullable=True)
     latency_ms = Column(Float, nullable=True)
+    actual_total = Column(Float, nullable=True)
+    closing_line = Column(Float, nullable=True)
+    clv = Column(Float, nullable=True)       # closing line value: positive = beat the close
+    settled_at = Column(DateTime(timezone=True), nullable=True)
 
     game = relationship("Game", back_populates="predictions")
 
@@ -104,3 +107,22 @@ class InjuryReport(Base):
     impact_score = Column(Float, nullable=True)  # 0–1 estimated team impact
     reported_at = Column(DateTime(timezone=True), server_default=func.now())
     last_updated = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class AlertRecord(Base):
+    __tablename__ = "alert_records"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    alert_id = Column(String(36), unique=True, nullable=False, index=True)
+    sport = Column(String(10), nullable=False, index=True)
+    home_team = Column(String(50), nullable=False)
+    away_team = Column(String(50), nullable=False)
+    game_date = Column(String(20), nullable=False)
+    direction = Column(String(10), nullable=False)   # "over" | "under"
+    prob_over = Column(Float, nullable=False)
+    confidence = Column(Float, nullable=False)
+    edge = Column(Float, nullable=False)
+    total_line = Column(Float, nullable=False)
+    fired = Column(Boolean, default=False)
+    webhook_response = Column(String(200), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False)

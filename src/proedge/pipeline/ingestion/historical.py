@@ -62,12 +62,59 @@ class HistoricalLoader:
                 df.to_parquet(cache_path, index=False)
                 return df
             except Exception as exc:
-                logger.warning("Real NBA fetch failed (%s) — falling back to synthetic", exc)
+                self._record_fetch_failure(sport, "nba_api", exc)
 
-        logger.info("Generating synthetic historical data for %s (%d seasons)", sport, seasons)
+        if sport == "nfl":
+            try:
+                from proedge.pipeline.ingestion.espn_nfl_fetcher import fetch_nfl_games
+                logger.info("Fetching real NFL game data from ESPN...")
+                df = fetch_nfl_games()
+                if not df.empty:
+                    df.to_parquet(cache_path, index=False)
+                    return df
+                self._record_fetch_failure(sport, "espn", ValueError("empty DataFrame returned"))
+            except Exception as exc:
+                self._record_fetch_failure(sport, "espn", exc)
+
+        if sport == "mlb":
+            try:
+                from proedge.pipeline.ingestion.mlb_stats_fetcher import fetch_mlb_games
+                logger.info("Fetching real MLB game data from MLB Stats API...")
+                df = fetch_mlb_games()
+                if not df.empty:
+                    df.to_parquet(cache_path, index=False)
+                    return df
+                self._record_fetch_failure(sport, "mlb_statsapi", ValueError("empty DataFrame returned"))
+            except Exception as exc:
+                self._record_fetch_failure(sport, "mlb_statsapi", exc)
+
+        logger.error(
+            "SYNTHETIC DATA WARNING: Falling back to generated data for %s. "
+            "All predictions trained on this data will have inflated metrics and poor real-world accuracy. "
+            "Fix the data fetcher above before using this model in production.",
+            sport,
+        )
+        try:
+            from proedge.monitoring.metrics import SYNTHETIC_DATA_TOTAL
+            SYNTHETIC_DATA_TOTAL.labels(sport=sport).inc()
+        except Exception:
+            pass
+
         df = self._build_synthetic_dataset(sport, seasons)
         df.to_parquet(cache_path, index=False)
         return df
+
+    @staticmethod
+    def _record_fetch_failure(sport: str, source: str, exc: Exception) -> None:
+        logger.error(
+            "Real %s data fetch failed (source=%s): %s — will attempt synthetic fallback",
+            sport.upper(), source, exc,
+        )
+        try:
+            from proedge.monitoring.metrics import DATA_FETCH_ERRORS
+            DATA_FETCH_ERRORS.labels(sport=sport, source=source).inc()
+        except Exception:
+            pass
 
     def _build_synthetic_dataset(self, sport: str, seasons: int) -> pd.DataFrame:
         current_year = datetime.now().year
@@ -137,9 +184,10 @@ class HistoricalLoader:
                 row["ref_foul_rate"]        = 0.0
                 row["ump_walk_rate"]        = 0.0
 
-                # GROUP E — injury counts (0 at training)
-                row["home_key_players_out"] = 0.0
-                row["away_key_players_out"] = 0.0
+                # GROUP E — realistic injury counts (Poisson λ≈0.7 per team per game,
+                # capped at 3; teaches the model the injury signal vs always-zero)
+                row["home_key_players_out"] = float(min(3, int(rng.poisson(0.7))))
+                row["away_key_players_out"] = float(min(3, int(rng.poisson(0.7))))
 
                 all_rows.append(row)
 
@@ -185,12 +233,9 @@ _STAT_DISTRIBUTIONS: dict[str, dict[str, tuple[float, float]]] = {
         "redZoneEfficiency": (0.58, 0.12), "timeOfPossession": (30, 4),
         # Advanced offense
         "yardsPerPlay": (5.5, 0.7), "redZoneConvRate": (0.58, 0.12),
-        "explosivePlayRate": (0.12, 0.04), "fourthDownConversion": (0.50, 0.15),
-        "penaltyYards": (55, 25),
+        "fourthDownConversion": (0.50, 0.15), "penaltyYards": (55, 25),
         # Defensive / tempo
         "pressureRate": (0.25, 0.07), "secondsPerPlay": (28.0, 3.0),
-        # EPA
-        "expectedPointsAdded": (0.0, 0.15),
     },
     "nba": {
         # Basic
@@ -224,9 +269,8 @@ _STAT_DISTRIBUTIONS: dict[str, dict[str, tuple[float, float]]] = {
         "battingAvg": (0.255, 0.025), "onBasePct": (0.325, 0.030),
         "sluggingPct": (0.420, 0.045), "ops": (0.745, 0.070),
         "homeRuns": (1.2, 1.0),
-        # Advanced
-        "kBbRatio": (3.0, 0.8), "barrelRate": (0.08, 0.025),
-        "exitVelocity": (88.5, 2.5), "groundBallRate": (0.45, 0.06),
-        "flyBallRate": (0.35, 0.06), "bullpenFatigue": (1.5, 1.0),
+        # Advanced — only fields available from MLB Stats API boxscore
+        "kBbRatio": (3.0, 0.8), "groundBallRate": (0.45, 0.06),
+        "flyBallRate": (0.35, 0.06),
     },
 }

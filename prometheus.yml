@@ -2,7 +2,14 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
+  # Inside docker-compose: scrape the api service directly
   - job_name: proedge_api
     static_configs:
-      - targets: ["host.docker.internal:8080"]
+      - targets: ["api:8000"]
     metrics_path: /metrics
+
+  # Local dev (outside docker): uncomment to scrape the uvicorn dev server
+  # - job_name: proedge_api_local
+  #   static_configs:
+  #     - targets: ["host.docker.internal:8000"]
+  #   metrics_path: /metrics

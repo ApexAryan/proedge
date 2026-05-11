@@ -44,8 +44,18 @@ class FeatureStore:
 
         if use_cache and cache_path.exists():
             logger.info("Loading features from cache: %s", cache_path)
+            try:
+                from proedge.monitoring.metrics import FEATURE_CACHE_HITS
+                FEATURE_CACHE_HITS.labels(result="hit").inc()
+            except Exception:
+                pass
             return pd.read_parquet(cache_path)
 
+        try:
+            from proedge.monitoring.metrics import FEATURE_CACHE_HITS
+            FEATURE_CACHE_HITS.labels(result="miss").inc()
+        except Exception:
+            pass
         logger.info("Computing feature matrix for %s (%d games)", sport, len(df))
         features = self._build(df, sport)
 

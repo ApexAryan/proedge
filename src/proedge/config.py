@@ -35,6 +35,16 @@ class Settings(BaseSettings):
     drift_psi_threshold: float = 0.25
     drift_check_interval_hours: int = 24
 
+    # Odds API
+    odds_api_key: str = ""
+
+    # Alerts
+    alert_confidence_threshold: float = 0.65
+    alert_webhook_url: str = ""
+
+    # Auth
+    api_key: str = ""  # if set, all /predictions and /training endpoints require X-API-Key header
+
     # Sports supported
     supported_sports: list[str] = ["nfl", "nba", "mlb"]
 

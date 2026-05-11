@@ -1,6 +1,4 @@
 import numpy as np
-import pandas as pd
-import pytest
 
 from proedge.pipeline.features.rolling import add_rolling_features, add_over_under_streak
 from proedge.pipeline.features.fatigue import add_fatigue_features
@@ -30,8 +28,6 @@ def test_rolling_no_leakage(sample_game_df):
     roll3_col = f"{stat_col}_roll3_mean"
     if roll3_col in result.columns:
         # First occurrence per team should be NaN (no prior games)
-        team = result["home_team"].iloc[0]
-        first_idx = result[result["home_team"] == team].index[0]
         # May be NaN or a valid value depending on min_periods=1 — just ensure no crash
         assert roll3_col in result.columns
 

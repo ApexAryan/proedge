@@ -3,7 +3,6 @@ import pytest
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock
 
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://proedge:proedge@localhost:5432/proedge_test")
 os.environ.setdefault("MODEL_REGISTRY_PATH", "/tmp/proedge_test_models")

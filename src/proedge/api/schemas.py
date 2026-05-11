@@ -83,17 +83,75 @@ class ModelPerformanceResponse(BaseModel):
     is_active: bool
 
 
-class DriftReport(BaseModel):
-    sport: str
-    retrain_triggered: bool
-    features_checked: int
-    features_drifted: int
-    feature_details: dict
-
-
 class HealthResponse(BaseModel):
     status: str
     db_connected: bool
     models_loaded: dict[str, str | None]
     uptime_seconds: float
     version: str
+
+
+class PlayerProjectionResponse(BaseModel):
+    projection_id: str
+    player_name: str
+    team: str
+    position: str
+    stat_type: str
+    line: float
+    game_id: str
+    home_team: str
+    away_team: str
+    start_time: datetime | None
+    status: str
+    is_promo: bool
+    odds_type: str        # "standard" | "demon" | "goblin"
+    projection_type: str
+    sport: str
+
+
+class GameLineResponse(BaseModel):
+    game_id: str
+    home_team: str
+    away_team: str
+    start_time: datetime | None
+    stat_type: str
+    line: float
+    sport: str
+
+
+class GameSummaryResponse(BaseModel):
+    """All lines and props grouped by game, ready to feed into the model."""
+    game_id: str
+    home_team: str
+    away_team: str
+    start_time: datetime | None
+    sport: str
+    total_line: float | None
+    spread: float | None          # positive = home favoured by N pts
+    game_lines: list[GameLineResponse]
+    player_projections: list[PlayerProjectionResponse]
+    projected_total: float | None  # sum of point props when no explicit total line
+
+
+class PrizePicksBoardResponse(BaseModel):
+    sport: str
+    fetched_at: datetime
+    game_count: int
+    player_prop_count: int
+    game_line_count: int
+    games: list[GameSummaryResponse]
+
+
+class SettleRequest(BaseModel):
+    actual_total: float = Field(..., gt=0, description="Final combined score / runs")
+    closing_line: float = Field(..., gt=0, description="Line at game time (as it closed)")
+
+
+class SettleResponse(BaseModel):
+    prediction_id: UUID
+    actual_total: float
+    closing_line: float
+    clv: float
+    is_correct: bool
+    predicted_direction: str
+    message: str

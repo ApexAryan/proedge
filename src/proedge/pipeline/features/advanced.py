@@ -1,10 +1,47 @@
 """Advanced derived features: pace/efficiency differentials, luck regression, schedule density."""
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 
 import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
+
+# MLB park factors (runs-context relative to league average of 1.0)
+_MLB_PARK_FACTORS: dict[str, float] = {
+    "COL": 1.15,  # Coors Field — altitude, no humidor pre-2022
+    "BOS": 1.07,  # Fenway Park — short dimensions
+    "BAL": 1.05,  # Camden Yards
+    "CIN": 1.04,  # Great American Ball Park
+    "TEX": 1.04,  # Globe Life Field
+    "MIL": 1.03,  # American Family Field
+    "PHI": 1.02,  # Citizens Bank Park
+    "MIN": 1.02,  # Target Field
+    "NYY": 1.02,  # Yankee Stadium
+    "CHC": 1.01,  # Wrigley Field
+    "ARI": 1.01,  # Chase Field (retractable roof)
+    "CWS": 1.01,  # Guaranteed Rate Field
+    "HOU": 0.99,  # Minute Maid Park (Crawford boxes both ways)
+    "LAD": 0.97,  # Dodger Stadium
+    "CLE": 0.98,  # Progressive Field
+    "STL": 0.98,  # Busch Stadium
+    "LAA": 1.00,
+    "ATL": 1.00,
+    "DET": 1.00,
+    "KC":  1.00,
+    "TOR": 1.00,
+    "WSH": 1.00,
+    "NYM": 0.95,  # Citi Field
+    "MIA": 0.95,  # loanDepot Park
+    "TB":  0.93,  # Tropicana Field
+    "PIT": 0.94,  # PNC Park
+    "OAK": 0.96,  # Oakland Coliseum
+    "SD":  0.96,  # Petco Park
+    "SEA": 0.92,  # T-Mobile Park (marine layer)
+    "SF":  0.92,  # Oracle Park
+}
 
 
 def add_advanced_features(df: pd.DataFrame, sport: str) -> pd.DataFrame:
@@ -14,6 +51,11 @@ def add_advanced_features(df: pd.DataFrame, sport: str) -> pd.DataFrame:
     df = add_pace_efficiency_composites(df, sport)
     df = add_luck_regression(df, sport)
     df = add_situational_interactions(df, sport)
+    df = add_efg_features(df)
+    df = add_scoring_volatility(df, sport)
+    if sport == "mlb":
+        df = add_mlb_park_factors(df)
+        df = add_hr_per_flyball(df)
     return df
 
 
@@ -103,6 +145,10 @@ def add_hot_shooting_streak(df: pd.DataFrame) -> pd.DataFrame:
                 (df[roll20] - df[roll3] > 0.05).astype(float)
             )
         else:
+            logger.debug(
+                "hot_shooting: rolling columns %s / %s not found — defaulting to 0",
+                roll3, roll20,
+            )
             df[f"{side}_hot_shooting"]  = 0.0
             df[f"{side}_cold_shooting"] = 0.0
     return df
@@ -195,6 +241,10 @@ def add_luck_regression(df: pd.DataFrame, sport: str) -> pd.DataFrame:
         "home_freeThrowAttempts_roll5_mean", "home_freeThrowPct_roll5_mean",
     ]
     if not all(c in df.columns for c in needed):
+        missing = [c for c in needed if c not in df.columns]
+        logger.debug(
+            "luck_regression: missing rolling columns %s — defaulting luck_factor to 0", missing
+        )
         df["home_luck_factor"] = 0.0
         df["away_luck_factor"] = 0.0
         return df
@@ -254,4 +304,131 @@ def add_situational_interactions(df: pd.DataFrame, sport: str) -> pd.DataFrame:
             df["home_key_players_out"] - df["away_key_players_out"]
         ) * -3.0   # negative when home is more injured → Under for home, closer game
 
+    return df
+
+
+# ── Effective Field Goal % (NBA) ──────────────────────────────────────────────
+
+def add_efg_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    eFG% = (FGM + 0.5 * FG3M) / FGA — properly weights 3-pointers vs 2-pointers.
+    Computed from rolling means so it captures recent shooting efficiency trends.
+    Sum/diff across teams is an over/under predictor: combined eFG% correlates
+    with total scoring.
+    """
+    new_cols: dict[str, pd.Series] = {}
+    for w in (5, 10):
+        for side in ("home", "away"):
+            fgm  = f"{side}_fieldGoalsMade_roll{w}_mean"
+            fg3m = f"{side}_threesMade_roll{w}_mean"
+            fga  = f"{side}_fieldGoalAttempts_roll{w}_mean"
+            if all(c in df.columns for c in [fgm, fg3m, fga]):
+                denom = df[fga].replace(0, np.nan)
+                new_cols[f"{side}_efgPct_roll{w}"] = (df[fgm] + 0.5 * df[fg3m]) / denom
+
+        h_efg = f"home_efgPct_roll{w}"
+        a_efg = f"away_efgPct_roll{w}"
+        if h_efg in new_cols and a_efg in new_cols:
+            new_cols[f"efg_sum_roll{w}"]  = new_cols[h_efg] + new_cols[a_efg]
+            new_cols[f"efg_diff_roll{w}"] = new_cols[h_efg] - new_cols[a_efg]
+
+    if new_cols:
+        df = pd.concat([df, pd.DataFrame(new_cols, index=df.index)], axis=1)
+    return df
+
+
+# ── MLB Park Factors ──────────────────────────────────────────────────────────
+
+def add_mlb_park_factors(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Static run-environment multiplier per home ballpark.
+    Coors Field (+15%) is the most extreme; Oracle Park (-8%) suppresses scoring.
+    Interacted with recent run-scoring rolling averages to produce park-adjusted
+    expected run totals.
+    """
+    if "home_team" not in df.columns:
+        return df
+
+    park_factor = df["home_team"].map(_MLB_PARK_FACTORS).fillna(1.0)
+    new_cols: dict[str, pd.Series] = {"home_park_factor": park_factor}
+
+    for w in (5, 10):
+        h_runs = f"home_runsScored_roll{w}_mean"
+        a_runs = f"away_runsScored_roll{w}_mean"
+        if h_runs in df.columns and a_runs in df.columns:
+            # Park-adjusted expected total: scale both teams' run averages by park factor
+            new_cols[f"park_adj_total_roll{w}"] = (df[h_runs] + df[a_runs]) * park_factor
+            new_cols[f"park_adj_home_runs_roll{w}"] = df[h_runs] * park_factor
+
+    df = pd.concat([df, pd.DataFrame(new_cols, index=df.index)], axis=1)
+    return df
+
+
+# ── Scoring volatility composites ─────────────────────────────────────────────
+
+def add_scoring_volatility(df: pd.DataFrame, sport: str) -> pd.DataFrame:
+    """
+    Rolling std of per-team scoring captures how consistent/unpredictable each
+    team is. High-volatility matchups favour the over (wider distribution).
+    For NBA, 3PT volume × 3PT-pct std creates a variance-contribution signal:
+    high-usage three-point teams running hot or cold cause larger total swings.
+    """
+    score_stat = {"nba": "points", "nfl": "pointsScored", "mlb": "runsScored"}.get(sport)
+    new_cols: dict[str, pd.Series] = {}
+
+    if score_stat:
+        for w in (5, 10):
+            h_std  = f"home_{score_stat}_roll{w}_std"
+            a_std  = f"away_{score_stat}_roll{w}_std"
+            h_mean = f"home_{score_stat}_roll{w}_mean"
+            a_mean = f"away_{score_stat}_roll{w}_mean"
+            if all(c in df.columns for c in [h_std, a_std, h_mean, a_mean]):
+                new_cols[f"volatility_sum_roll{w}"]  = df[h_std] + df[a_std]
+                new_cols[f"volatility_diff_roll{w}"] = df[h_std] - df[a_std]
+                new_cols[f"home_score_cv_roll{w}"] = df[h_std] / df[h_mean].replace(0, np.nan).fillna(1)
+                new_cols[f"away_score_cv_roll{w}"] = df[a_std] / df[a_mean].replace(0, np.nan).fillna(1)
+
+    if sport == "nba":
+        for w in (5, 10):
+            h3std = f"home_threePointPct_roll{w}_std"
+            a3std = f"away_threePointPct_roll{w}_std"
+            h3vol = f"home_threePointAttempts_roll{w}_mean"
+            a3vol = f"away_threePointAttempts_roll{w}_mean"
+            if all(c in df.columns for c in [h3std, a3std, h3vol, a3vol]):
+                h_contrib = df[h3std] * df[h3vol]
+                a_contrib = df[a3std] * df[a3vol]
+                new_cols[f"home_3pt_variance_contrib_roll{w}"] = h_contrib
+                new_cols[f"away_3pt_variance_contrib_roll{w}"] = a_contrib
+                new_cols[f"3pt_variance_sum_roll{w}"] = h_contrib + a_contrib
+
+    if new_cols:
+        df = pd.concat([df, pd.DataFrame(new_cols, index=df.index)], axis=1)
+    return df
+
+
+# ── HR per fly ball (MLB) ─────────────────────────────────────────────────────
+
+def add_hr_per_flyball(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    HR/FB rate from rolling means: teams with a high HR-per-fly-ball ratio
+    hit the ball harder and carry more power. Elevated rates predict over;
+    pitchers who suppress fly-ball HR predict under.
+    """
+    new_cols: dict[str, pd.Series] = {}
+    for w in (5, 10):
+        for side in ("home", "away"):
+            hr = f"{side}_homeRuns_roll{w}_mean"
+            fb = f"{side}_flyBallRate_roll{w}_mean"
+            if hr in df.columns and fb in df.columns:
+                denom = df[fb].replace(0, np.nan).fillna(0.35)
+                new_cols[f"{side}_hr_per_flyball_roll{w}"] = df[hr] / denom
+
+        h_col = f"home_hr_per_flyball_roll{w}"
+        a_col = f"away_hr_per_flyball_roll{w}"
+        if h_col in new_cols and a_col in new_cols:
+            new_cols[f"hr_per_flyball_sum_roll{w}"]  = new_cols[h_col] + new_cols[a_col]
+            new_cols[f"hr_per_flyball_diff_roll{w}"] = new_cols[h_col] - new_cols[a_col]
+
+    if new_cols:
+        df = pd.concat([df, pd.DataFrame(new_cols, index=df.index)], axis=1)
     return df

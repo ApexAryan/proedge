@@ -9,6 +9,17 @@ import numpy as np
 import pandas as pd
 from nba_api.stats.endpoints import leaguegamelog
 
+# DNP comment substrings that indicate a genuine injury absence
+_INJURY_KEYWORDS = frozenset({
+    "INJURY", "ILLNESS", "ILL", "SICK", "PERSONAL",
+    "MEDICAL", "DND", "PROTOCOL", "CONCUSSION",
+    "KNEE", "ANKLE", "HAMSTRING", "BACK", "WRIST",
+    "SHOULDER", "HIP", "CALF", "QUAD", "GROIN",
+    "FOOT", "ACHILLES", "ELBOW", "HAND", "FINGER",
+    "REST",
+})
+_NON_INJURY = frozenset({"COACH'S DECISION", "COACHES DECISION"})
+
 logger = logging.getLogger(__name__)
 
 # nba_api column → our internal stat name
@@ -53,6 +64,8 @@ def fetch_nba_games(
     logger.info("Fetching real NBA data for seasons: %s", seasons)
 
     raw_frames: list[pd.DataFrame] = []
+    player_frames: list[pd.DataFrame] = []
+
     for season in seasons:
         logger.info("  → season %s", season)
         try:
@@ -64,11 +77,39 @@ def fetch_nba_games(
             df = log.get_data_frames()[0]
             raw_frames.append(df)
         except Exception as exc:
-            logger.warning("Failed to fetch season %s: %s", season, exc)
+            logger.warning("Failed to fetch team log season %s: %s", season, exc)
+        time.sleep(delay)
+
+        # Player-level log has COMMENT column — one call per season, not per game
+        try:
+            plog = leaguegamelog.LeagueGameLog(
+                season=season,
+                season_type_all_star="Regular Season",
+                player_or_team_abbreviation="P",
+                timeout=30,
+            )
+            pdf = plog.get_data_frames()[0]
+            if "COMMENT" in pdf.columns:
+                player_frames.append(pdf[["GAME_ID", "TEAM_ID", "COMMENT"]])
+        except Exception as exc:
+            logger.warning("Failed to fetch player log season %s: %s", season, exc)
         time.sleep(delay)
 
     if not raw_frames:
         raise RuntimeError("Could not fetch any NBA seasons — check internet connection")
+
+    # Build per-(game_id, team_id) injury count from player DNP comments
+    injury_counts: dict[tuple[str, str], int] = defaultdict(int)
+    if player_frames:
+        player_raw = pd.concat(player_frames, ignore_index=True)
+        for _, pr in player_raw.iterrows():
+            comment = str(pr.get("COMMENT") or "").upper()
+            if not comment:
+                continue
+            if any(kw in comment for kw in _NON_INJURY):
+                continue
+            if any(kw in comment for kw in _INJURY_KEYWORDS):
+                injury_counts[(str(pr["GAME_ID"]), str(pr["TEAM_ID"]))] += 1
 
     raw = pd.concat(raw_frames, ignore_index=True)
     raw["GAME_DATE"] = pd.to_datetime(raw["GAME_DATE"])
@@ -160,9 +201,12 @@ def fetch_nba_games(
         row["ref_foul_rate"]        = 0.0
         row["ump_walk_rate"]        = 0.0
 
-        # GROUP E — injury counts
-        row["home_key_players_out"] = 0.0
-        row["away_key_players_out"] = 0.0
+        # GROUP E — real injury counts from player DNP comments
+        game_id_str = str(g["GAME_ID"])
+        home_team_id = str(g.get("TEAM_ID_home", ""))
+        away_team_id = str(g.get("TEAM_ID_away", ""))
+        row["home_key_players_out"] = float(injury_counts.get((game_id_str, home_team_id), 0))
+        row["away_key_players_out"] = float(injury_counts.get((game_id_str, away_team_id), 0))
 
         rows.append(row)
 

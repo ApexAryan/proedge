@@ -11,7 +11,7 @@ for i in range(1, 21):
         "away_rest_days": i % 3
     }).encode()
     req = urllib.request.Request(
-        "http://localhost:8080/predictions",
+        "http://localhost:8000/predictions",
         data=payload,
         headers={"Content-Type": "application/json"},
         method="POST"

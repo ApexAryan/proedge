@@ -3,13 +3,12 @@ from __future__ import annotations
 
 import argparse
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
-import numpy as np
 import pandas as pd
-from sklearn.model_selection import TimeSeriesSplit
 
 from proedge.config import get_settings
+from proedge.monitoring.metrics import DRIFT_PSI, RETRAIN_COUNTER
 from proedge.pipeline.features.store import FeatureStore
 from proedge.pipeline.ingestion.historical import HistoricalLoader
 from proedge.pipeline.models.drift import DriftDetector
@@ -25,7 +24,7 @@ VAL_FRAC = 0.15      # validation set carved from training portion
 MIN_TRAIN_GAMES = 500
 
 
-def train(sport: str, xgb_weight: float = 0.5) -> dict:
+def train(sport: str, xgb_weight: float = 0.5, trigger_reason: str = "manual") -> dict:
     logger.info("=== ProEdge Training Pipeline | sport=%s ===", sport)
 
     # 1. Load historical data
@@ -63,8 +62,12 @@ def train(sport: str, xgb_weight: float = 0.5) -> dict:
         len(X_train), len(X_val), len(X_holdout),
     )
 
-    # 4. Train ensemble
-    model = OverUnderEnsemble(xgb_weight=xgb_weight, lgb_weight=1 - xgb_weight)
+    # 4. Train ensemble — pass training_games so small datasets get tighter regularization
+    model = OverUnderEnsemble(
+        xgb_weight=xgb_weight,
+        lgb_weight=1 - xgb_weight,
+        training_games=len(X_train),
+    )
     model.fit(X_train, y_train, X_val, y_val)
 
     # 5. Evaluate on holdout (10,000+ games in production)
@@ -87,8 +90,12 @@ def train(sport: str, xgb_weight: float = 0.5) -> dict:
     importance = model.feature_importance()["ensemble"]
     detector.fit_reference(X_train, feature_importance=importance)
 
+    # Compute feature medians from training data — used at inference time as
+    # defaults instead of 0.0 so the model sees realistic context for unseen matchups.
+    feature_medians = {col: round(float(X_train[col].median()), 6) for col in feature_cols}
+
     # 7. Register model
-    version = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    version = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     registry = ModelRegistry()
     model_path = registry.save(
         model=model,
@@ -96,6 +103,18 @@ def train(sport: str, xgb_weight: float = 0.5) -> dict:
         version=version,
         metrics={**holdout_metrics, "lift_pct": round(lift_pct, 2), "training_games": len(X_train), "holdout_games": len(X_holdout)},
         feature_names=feature_cols,
+        feature_medians=feature_medians,
+    )
+
+    RETRAIN_COUNTER.labels(sport=sport, trigger_reason=trigger_reason).inc()
+
+    _persist_model_run(
+        sport=sport,
+        version=version,
+        model_path=str(model_path),
+        metrics=holdout_metrics,
+        feature_count=len(feature_cols),
+        xgb_weight=xgb_weight,
     )
 
     result = {
@@ -110,6 +129,41 @@ def train(sport: str, xgb_weight: float = 0.5) -> dict:
     }
     logger.info("Training complete: %s", result)
     return result
+
+
+def _persist_model_run(
+    sport: str,
+    version: str,
+    model_path: str,
+    metrics: dict,
+    feature_count: int,
+    xgb_weight: float,
+) -> None:
+    try:
+        from sqlalchemy import update as sa_update
+        from proedge.db.models import ModelRun
+        from proedge.db.session import SyncSessionLocal
+        with SyncSessionLocal() as session:
+            session.execute(
+                sa_update(ModelRun).where(ModelRun.sport == sport).values(is_active=False)
+            )
+            session.add(ModelRun(
+                version=version,
+                sport=sport,
+                accuracy=metrics.get("accuracy"),
+                log_loss=metrics.get("log_loss"),
+                brier_score=metrics.get("brier_score"),
+                training_games=metrics.get("training_games"),
+                feature_count=feature_count,
+                xgb_weight=xgb_weight,
+                lgb_weight=1.0 - xgb_weight,
+                model_path=model_path,
+                is_active=True,
+            ))
+            session.commit()
+        logger.info("ModelRun persisted: %s (%s)", version, sport)
+    except Exception as exc:
+        logger.warning("Could not persist ModelRun to DB: %s", exc)
 
 
 def check_and_retrain(sport: str, X_current: pd.DataFrame) -> bool:
@@ -137,6 +191,9 @@ def check_and_retrain(sport: str, X_current: pd.DataFrame) -> bool:
     X_cur = X_current[feature_cols].fillna(0) if feature_cols else X_current
     drift_report = detector.detect(X_cur)
 
+    for feat, detail in drift_report.get("feature_details", {}).items():
+        DRIFT_PSI.labels(sport=sport, feature=feat).set(detail["psi"])
+
     logger.info(
         "Drift check: %d/%d features drifted | retrain=%s",
         drift_report["features_drifted"],
@@ -146,12 +203,12 @@ def check_and_retrain(sport: str, X_current: pd.DataFrame) -> bool:
 
     if drift_report["retrain_triggered"]:
         logger.info("Retraining triggered for %s", sport)
-        train(sport)
+        train(sport, trigger_reason="drift_psi")
         return True
     return False
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     parser = argparse.ArgumentParser(description="ProEdge model trainer")
     parser.add_argument("--sport", choices=["nfl", "nba", "mlb"], required=True)
     parser.add_argument("--xgb-weight", type=float, default=0.5)

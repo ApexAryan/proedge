@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from proedge.db.models import Game, InjuryReport, ModelRun, PlayerStat, Prediction
+from proedge.db.models import AlertRecord, Game, InjuryReport, ModelRun, PlayerStat, Prediction
 
 
 class GameRepository:
@@ -67,6 +67,49 @@ class PredictionRepository:
         )
         return list(result.scalars().all())
 
+    async def get_by_id(self, prediction_id: UUID) -> Prediction | None:
+        result = await self.session.execute(
+            select(Prediction).where(Prediction.id == prediction_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_recent(self, sport: str | None = None, limit: int = 50) -> list[Prediction]:
+        q = select(Prediction)
+        if sport:
+            q = q.where(Prediction.sport == sport)
+        q = q.order_by(Prediction.predicted_at.desc()).limit(limit)
+        result = await self.session.execute(q)
+        return list(result.scalars().all())
+
+    async def settle(
+        self,
+        prediction_id: UUID,
+        actual_total: float,
+        closing_line: float,
+        predicted_direction: str,
+        bet_line: float,
+    ) -> Prediction | None:
+        """Record final result and compute CLV. Returns None if prediction not found."""
+        pred = await self.get_by_id(prediction_id)
+        if pred is None:
+            return None
+        result_over = actual_total > closing_line
+        is_correct = (predicted_direction == "over") == result_over
+        # CLV: positive = we beat the close (got a better number than where market settled)
+        clv = (closing_line - bet_line) if predicted_direction == "over" else (bet_line - closing_line)
+        await self.session.execute(
+            update(Prediction)
+            .where(Prediction.id == prediction_id)
+            .values(
+                actual_total=actual_total,
+                closing_line=closing_line,
+                clv=round(clv, 2),
+                is_correct=is_correct,
+                settled_at=datetime.now(timezone.utc),
+            )
+        )
+        return pred
+
     async def mark_correct(self, prediction_id: UUID, is_correct: bool) -> None:
         await self.session.execute(
             update(Prediction)
@@ -75,18 +118,25 @@ class PredictionRepository:
         )
 
     async def accuracy_by_version(self, model_version: str, sport: str) -> dict:
-        result = await self.session.execute(
-            select(Prediction).where(
+        total_result = await self.session.execute(
+            select(func.count(Prediction.id)).where(
                 Prediction.model_version == model_version,
                 Prediction.sport == sport,
                 Prediction.is_correct.isnot(None),
             )
         )
-        preds = result.scalars().all()
-        if not preds:
+        total = total_result.scalar() or 0
+        if total == 0:
             return {"accuracy": None, "total": 0}
-        correct = sum(1 for p in preds if p.is_correct)
-        return {"accuracy": correct / len(preds), "total": len(preds)}
+        correct_result = await self.session.execute(
+            select(func.count(Prediction.id)).where(
+                Prediction.model_version == model_version,
+                Prediction.sport == sport,
+                Prediction.is_correct.is_(True),
+            )
+        )
+        correct = correct_result.scalar() or 0
+        return {"accuracy": correct / total, "total": total}
 
 
 class ModelRunRepository:
@@ -102,7 +152,7 @@ class ModelRunRepository:
     async def get_active(self, sport: str) -> ModelRun | None:
         result = await self.session.execute(
             select(ModelRun).where(
-                ModelRun.sport == sport, ModelRun.is_active == True
+                ModelRun.sport == sport, ModelRun.is_active.is_(True)
             )
         )
         return result.scalar_one_or_none()
@@ -156,6 +206,32 @@ class PlayerStatRepository:
             .limit(limit)
         )
         return list(result.scalars().all())
+
+
+class AlertRepository:
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def create(self, **kwargs) -> AlertRecord:
+        record = AlertRecord(**kwargs)
+        self.session.add(record)
+        await self.session.flush()
+        return record
+
+    async def get_recent(self, limit: int = 50, sport: str | None = None) -> list[AlertRecord]:
+        q = select(AlertRecord)
+        if sport:
+            q = q.where(AlertRecord.sport == sport.upper())
+        q = q.order_by(AlertRecord.created_at.desc()).limit(limit)
+        result = await self.session.execute(q)
+        return list(result.scalars().all())
+
+    async def update_fired(self, alert_id: str, fired: bool, webhook_response: str | None) -> None:
+        await self.session.execute(
+            update(AlertRecord)
+            .where(AlertRecord.alert_id == alert_id)
+            .values(fired=fired, webhook_response=webhook_response)
+        )
 
 
 class InjuryRepository:
