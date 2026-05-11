@@ -10,6 +10,7 @@ primary_region = "iad"
 [env]
   API_HOST                   = "0.0.0.0"
   API_PORT                   = "8000"
+  DATA_DIR                   = "/data"
   MODEL_REGISTRY_PATH        = "/data/models"
   ACTIVE_MODEL_VERSION       = "latest"
   DRIFT_PSI_THRESHOLD        = "0.25"

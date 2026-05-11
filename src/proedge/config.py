@@ -27,7 +27,8 @@ class Settings(BaseSettings):
     azure_client_id: str = ""
     azure_client_secret: str = ""
 
-    # Model Registry
+    # Data / Model Registry
+    data_dir: str = "./data"
     model_registry_path: str = "./models"
     active_model_version: str = "latest"
 

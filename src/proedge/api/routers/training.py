@@ -13,7 +13,11 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/training", tags=["training"])
 
-_STATUS_FILE = Path("./data/update_status.json")
+def _data_dir() -> Path:
+    from proedge.config import get_settings as _gs
+    return Path(_gs().data_dir)
+
+_STATUS_FILE_NAME = "update_status.json"
 
 # In-process lock so two concurrent retrain requests don't collide
 _retrain_locks: dict[str, asyncio.Lock] = {}
@@ -104,7 +108,7 @@ async def run_daily_update(
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(None, updater.run, parsed_date)
 
-    _save_update_status(sport, result.__dict__)
+    _save_update_status(sport, result.__dict__, _data_dir())
 
     return UpdateResponse(
         sport=result.sport,
@@ -175,8 +179,8 @@ async def get_training_status(sport: str):
     sport = sport.lower()
     _validate_sport(sport)
 
-    saved = _load_update_status(sport)
-    historical_games = _count_historical(sport)
+    saved = _load_update_status(sport, _data_dir())
+    historical_games = _count_historical(sport, _data_dir())
 
     from proedge.pipeline.models.registry import ModelRegistry
 
@@ -225,38 +229,40 @@ def _validate_sport(sport: str):
         )
 
 
-def _save_update_status(sport: str, data: dict):
+def _save_update_status(sport: str, data: dict, data_dir: Path):
     import json
 
-    _STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    data_dir.mkdir(parents=True, exist_ok=True)
+    status_file = data_dir / _STATUS_FILE_NAME
     existing: dict = {}
-    if _STATUS_FILE.exists():
+    if status_file.exists():
         try:
-            existing = json.loads(_STATUS_FILE.read_text())
+            existing = json.loads(status_file.read_text())
         except Exception as exc:
             logger.warning("Could not read update status file, resetting: %s", exc)
     existing[sport] = {
         k: str(v) if not isinstance(v, (int, float, bool, type(None))) else v
         for k, v in data.items()
     }
-    _STATUS_FILE.write_text(json.dumps(existing, indent=2))
+    status_file.write_text(json.dumps(existing, indent=2))
 
 
-def _load_update_status(sport: str) -> dict:
+def _load_update_status(sport: str, data_dir: Path) -> dict:
     import json
 
-    if _STATUS_FILE.exists():
+    status_file = data_dir / _STATUS_FILE_NAME
+    if status_file.exists():
         try:
-            return json.loads(_STATUS_FILE.read_text()).get(sport, {})
+            return json.loads(status_file.read_text()).get(sport, {})
         except Exception:
             pass
     return {}
 
 
-def _count_historical(sport: str) -> int | None:
+def _count_historical(sport: str, data_dir: Path) -> int | None:
     import pandas as pd
 
-    path = Path(f"./data/{sport}_historical.parquet")
+    path = data_dir / f"{sport}_historical.parquet"
     if path.exists():
         try:
             return len(pd.read_parquet(path, columns=["game_id"]))

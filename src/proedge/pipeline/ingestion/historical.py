@@ -126,8 +126,8 @@ class HistoricalLoader:
     and model training when no real data is available.
     """
 
-    def __init__(self, cache_dir: str = "./data"):
-        self.cache_dir = Path(cache_dir)
+    def __init__(self, cache_dir: str | None = None):
+        self.cache_dir = Path(cache_dir or settings.data_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.ingester = StatsIngester()
 

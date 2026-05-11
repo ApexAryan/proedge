@@ -44,8 +44,10 @@ class FeatureStore:
     Caches to disk keyed by a hash of the input shape and date range.
     """
 
-    def __init__(self, cache_dir: str = "./data/features"):
-        self.cache_dir = Path(cache_dir)
+    def __init__(self, cache_dir: str | None = None):
+        from proedge.config import get_settings as _gs
+        base = Path(cache_dir) if cache_dir else Path(_gs().data_dir) / "features"
+        self.cache_dir = base
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def compute(self, df: pd.DataFrame, sport: str, use_cache: bool = True) -> pd.DataFrame:
