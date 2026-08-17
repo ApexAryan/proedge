@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import statistics
 from collections import defaultdict
@@ -9,10 +10,14 @@ from collections import defaultdict
 import httpx
 from fastapi import APIRouter, HTTPException, Query, status
 
+import pandas as pd
+
 from proedge.api.schemas import (
     GameLineResponse,
     GameSummaryResponse,
+    KalshiThresholdData,
     LineComparisonResponse,
+    LineMatrixResponse,
     PlayerProjectionResponse,
     PrizePicksBoardResponse,
 )
@@ -172,6 +177,173 @@ async def compare_lines_matchup(sport: str, home_team: str, away_team: str):
             detail=f"No lines found for {home_team} vs {away_team} ({sport})",
         )
     return _comp_to_response(comp)
+
+
+_matrix_model_cache: dict[str, object] = {}
+
+
+@router.get(
+    "/matrix/{sport}/{home_team}/{away_team}",
+    response_model=LineMatrixResponse,
+    summary="Full line matrix: all Kalshi thresholds with model edge + Underdog/PrizePicks comparison",
+    description=(
+        "For a specific matchup, returns every Kalshi total threshold (e.g. 198.5–228.5 "
+        "for an NBA game) with its Yes/No ask prices, market-implied probability, and the "
+        "model's predicted probability at that threshold. EV is calculated for both sides. "
+        "Also includes the PrizePicks and Underdog game total lines for cross-platform comparison."
+    ),
+)
+async def get_line_matrix(sport: str, home_team: str, away_team: str):
+    sport_lower = sport.lower()
+    if sport_lower not in ("nba", "nfl", "mlb"):
+        raise HTTPException(status_code=422, detail=f"Unsupported sport '{sport}'")
+
+    loop = asyncio.get_running_loop()
+
+    # Fetch Kalshi (sync, run in executor)
+    kalshi_game = await loop.run_in_executor(
+        None, _fetch_kalshi_game, sport_lower, home_team, away_team
+    )
+
+    # Fetch PrizePicks async + Underdog sync concurrently
+    pp_task = asyncio.create_task(_fetch_pp_total(sport_lower, home_team, away_team))
+    ud_task = loop.run_in_executor(
+        None, _fetch_underdog_total, sport_lower, home_team, away_team,
+        kalshi_game.implied_line if kalshi_game else None
+    )
+    pp_line, ud_total = await asyncio.gather(pp_task, ud_task, return_exceptions=True)
+    if isinstance(pp_line, Exception):
+        pp_line = None
+    if isinstance(ud_total, Exception):
+        ud_total = None
+
+    # Load model for this sport (cached)
+    model, feature_names, feature_medians = _load_model_meta(sport_lower)
+
+    # Score model at each threshold's line value individually — gives meaningful
+    # variation (MLB 4.5 vs 9.5 are very different) instead of a uniform log-odds shift.
+    thresholds: list[KalshiThresholdData] = []
+    if kalshi_game and kalshi_game.threshold_data and model is not None and feature_names:
+        try:
+            rows = []
+            for td in kalshi_game.threshold_data:
+                r = {f: feature_medians.get(f, 0.0) for f in feature_names}
+                r["total_line"] = td.threshold
+                rows.append(r)
+            X_batch = pd.DataFrame(rows)[feature_names].fillna(0)
+            thresh_probs_list = [float(p) for p in model.predict_proba(X_batch)]
+        except Exception:
+            thresh_probs_list = [None] * len(kalshi_game.threshold_data)
+
+        for td, model_prob in zip(kalshi_game.threshold_data, thresh_probs_list):
+            ev_yes = ev_no = best_bet = edge = None
+            if model_prob is not None:
+                ev_yes = round(model_prob - td.yes_ask, 4)
+                ev_no = round((1 - model_prob) - td.no_ask, 4)
+                # Bet direction must agree with model's directional prediction.
+                # Also restrict to thresholds within ±3 of the implied line —
+                # per-threshold model scoring is unreliable far from the training
+                # distribution of actual game lines.
+                implied = kalshi_game.implied_line or 0
+                near_implied = abs(td.threshold - implied) <= 3.0
+                if 0.12 < td.implied_prob < 0.88 and near_implied:
+                    if model_prob > 0.5 and ev_yes > 0:
+                        best_bet, edge = "over", round(ev_yes, 4)
+                    elif model_prob < 0.5 and ev_no > 0:
+                        best_bet, edge = "under", round(ev_no, 4)
+            thresholds.append(KalshiThresholdData(
+                threshold=td.threshold,
+                yes_ask=td.yes_ask,
+                no_ask=td.no_ask,
+                market_prob=td.implied_prob,
+                model_prob=round(model_prob, 4) if model_prob is not None else None,
+                ev_yes=ev_yes,
+                ev_no=ev_no,
+                best_bet=best_bet,
+                edge=edge,
+            ))
+    elif kalshi_game and kalshi_game.threshold_data:
+        for td in kalshi_game.threshold_data:
+            thresholds.append(KalshiThresholdData(
+                threshold=td.threshold,
+                yes_ask=td.yes_ask,
+                no_ask=td.no_ask,
+                market_prob=td.implied_prob,
+                model_prob=None,
+                ev_yes=None,
+                ev_no=None,
+                best_bet=None,
+                edge=None,
+            ))
+
+    return LineMatrixResponse(
+        sport=sport_lower,
+        home_team=home_team.upper(),
+        away_team=away_team.upper(),
+        kalshi_implied_line=kalshi_game.implied_line if kalshi_game else None,
+        prizepicks_line=pp_line,
+        underdog_line=ud_total.stat_value if ud_total else None,
+        underdog_over_american=ud_total.over_american if ud_total else None,
+        underdog_under_american=ud_total.under_american if ud_total else None,
+        thresholds=thresholds,
+    )
+
+
+def _fetch_kalshi_game(sport: str, home: str, away: str):
+    try:
+        from proedge.pipeline.ingestion.kalshi_fetcher import get_implied_line
+        return get_implied_line(sport, home, away)
+    except Exception as exc:
+        logger.warning("Kalshi game fetch error: %s", exc)
+        return None
+
+
+async def _fetch_pp_total(sport: str, home: str, away: str) -> float | None:
+    try:
+        from proedge.pipeline.ingestion.prizepicks_fetcher import fetch_board
+        board = await asyncio.wait_for(fetch_board(sport), timeout=10.0)
+        return board.total_line_for(home, away)
+    except Exception:
+        return None
+
+
+def _fetch_underdog_total(sport: str, home: str, away: str, kalshi_line: float | None):
+    try:
+        from proedge.pipeline.ingestion.underdog_fetcher import find_game_total
+        return find_game_total(sport, home, away, timeout=10.0)
+    except Exception as exc:
+        logger.warning("Underdog fetch error: %s", exc)
+        return None
+
+
+def _load_model_meta(sport: str):
+    """Load (model, feature_names, feature_medians) with module-level cache."""
+    if sport not in _matrix_model_cache:
+        try:
+            from proedge.pipeline.models.registry import ModelRegistry
+            reg = ModelRegistry()
+            model = reg.load(sport)
+            meta = reg.load_meta(sport)
+            _matrix_model_cache[sport] = (
+                model,
+                meta.get("feature_names", []),
+                meta.get("feature_medians", {}),
+            )
+        except Exception as exc:
+            logger.warning("Matrix: could not load %s model: %s", sport, exc)
+            _matrix_model_cache[sport] = (None, [], {})
+    return _matrix_model_cache[sport]
+
+
+def _score_at_line(model, feature_names: list[str], medians: dict, total_line: float) -> float:
+    """Run model at total_line with all other features at training medians."""
+    row = {f: medians.get(f, 0.0) for f in feature_names}
+    row["total_line"] = total_line
+    X = pd.DataFrame([row])[feature_names].fillna(0)
+    probs = model.predict_proba(X)
+    # OverUnderEnsemble.predict_proba returns 1-D P(over) array
+    return float(probs[0])
+
 
 
 def _comp_to_response(comp) -> LineComparisonResponse:

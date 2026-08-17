@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 32" fill="none">
+  <rect x="0.5" y="0.5" width="31" height="31" rx="5" fill="#171714" stroke="#2c2b26"/>
+  <line x1="7" y1="22" x2="25" y2="22" stroke="#5c584e" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M7 22 L13.5 14.5 L18.5 18 L25 10" stroke="#c4a35a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="25" cy="10" r="2" fill="#c4a35a"/>
+  <text
+    x="40"
+    y="22"
+    fill="#ece6d8"
+    font-family="IBM Plex Sans Condensed, Arial Narrow, sans-serif"
+    font-size="20"
+    font-weight="700"
+    letter-spacing="2.4"
+  >
+    PRO
+  </text>
+  <text
+    x="88"
+    y="22"
+    fill="#c4a35a"
+    font-family="IBM Plex Sans Condensed, Arial Narrow, sans-serif"
+    font-size="20"
+    font-weight="700"
+    letter-spacing="2.4"
+  >
+    EDGE
+  </text>
+</svg>

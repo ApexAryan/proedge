@@ -44,6 +44,27 @@ class GameRepository:
         )
         return list(result.scalars().all())
 
+    async def update_fields(self, game_id: UUID, **kwargs) -> None:
+        await self.session.execute(update(Game).where(Game.id == game_id).values(**kwargs))
+
+    async def get_by_teams_date(
+        self, sport: str, home_team: str, away_team: str, game_date: datetime
+    ) -> "Game | None":
+        """Find an existing game for this matchup on the same calendar day."""
+        from datetime import timedelta
+        day_start = game_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        result = await self.session.execute(
+            select(Game).where(
+                Game.sport == sport,
+                Game.home_team == home_team,
+                Game.away_team == away_team,
+                Game.game_date >= day_start,
+                Game.game_date < day_end,
+            ).limit(1)
+        )
+        return result.scalar_one_or_none()
+
 
 class PredictionRepository:
     def __init__(self, session: AsyncSession):
@@ -124,6 +145,15 @@ class PredictionRepository:
         await self.session.execute(
             update(Prediction).where(Prediction.id == prediction_id).values(is_correct=is_correct)
         )
+
+    async def get_latest_for_game(self, game_id: UUID) -> "Prediction | None":
+        result = await self.session.execute(
+            select(Prediction)
+            .where(Prediction.game_id == game_id)
+            .order_by(Prediction.predicted_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
 
     async def accuracy_by_version(self, model_version: str, sport: str) -> dict:
         total_result = await self.session.execute(

@@ -1,7 +1,8 @@
 """API key authentication middleware.
 
 If settings.api_key is set, requests to /predictions, /training, and
-/backtest must include an X-API-Key header matching the configured key.
+/backtest must include an X-API-Key header matching the configured key,
+or the HttpOnly ``proedge_api_key`` cookie set when serving the dashboard.
 Requests to /health, /metrics, /docs, /openapi.json, /lines, and
 /performance are public.
 """
@@ -13,6 +14,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 _PROTECTED_PREFIXES = ("/predictions", "/training", "/backtest")
 _PUBLIC_PREFIXES = ("/health", "/metrics", "/docs", "/openapi.json", "/redoc", "/")
+API_KEY_COOKIE = "proedge_api_key"
 
 
 class APIKeyMiddleware(BaseHTTPMiddleware):
@@ -29,7 +31,7 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
         if not protected:
             return await call_next(request)
 
-        provided = request.headers.get("X-API-Key", "")
+        provided = request.headers.get("X-API-Key", "") or request.cookies.get(API_KEY_COOKIE, "")
         if provided != self._api_key:
             return Response(
                 content='{"detail":"Invalid or missing API key"}',

@@ -171,6 +171,67 @@ class LineComparisonResponse(BaseModel):
     sources: list[str] = Field(default_factory=list)
 
 
+class KalshiThresholdData(BaseModel):
+    """One Kalshi contract (e.g. 'Over 213.5 points') with market prices and model edge."""
+    threshold: float
+    yes_ask: float          # cost to buy Over contract (bet Over)
+    no_ask: float           # cost to buy Under contract (bet Under)
+    market_prob: float      # market-implied P(over) = yes midpoint
+    model_prob: float | None = None   # model's P(over at this line)
+    ev_yes: float | None = None       # expected value of Over bet per $1 risked
+    ev_no: float | None = None        # expected value of Under bet per $1 risked
+    best_bet: str | None = None       # "over", "under", or None (no edge)
+    edge: float | None = None         # magnitude of best edge (positive = value)
+
+
+class LineMatrixResponse(BaseModel):
+    """Full line matrix for a game across Kalshi, PrizePicks, and Underdog."""
+    sport: str
+    home_team: str
+    away_team: str
+    kalshi_implied_line: float | None = None
+    prizepicks_line: float | None = None
+    underdog_line: float | None = None
+    underdog_over_american: str | None = None
+    underdog_under_american: str | None = None
+    thresholds: list[KalshiThresholdData] = Field(default_factory=list)
+    fetched_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class MarketScanRequest(BaseModel):
+    sports: list[str] = Field(default_factory=lambda: ["nba", "mlb", "nfl"])
+
+
+class MarketScanGameResult(BaseModel):
+    game_id: UUID | None
+    prediction_id: UUID | None
+    sport: str
+    home_team: str
+    away_team: str
+    kalshi_implied_line: float
+    model_prob_over: float
+    model_prob_under: float
+    predicted_direction: str
+    confidence: float
+    best_threshold: float | None = None
+    best_bet: str | None = None
+    best_edge: float | None = None
+    thresholds: list[KalshiThresholdData] = Field(default_factory=list)
+    line_movement: float | None = None   # change from first-seen implied line; None = first scan
+    ci_lower: float | None = None
+    ci_upper: float | None = None
+    home_key_players_out: int = 0
+    away_key_players_out: int = 0
+    live_stats: bool = False
+
+
+class MarketScanResponse(BaseModel):
+    scanned_at: datetime
+    sports: list[str]
+    total_games: int
+    results: list[MarketScanGameResult]
+
+
 class SettleRequest(BaseModel):
     actual_total: float = Field(..., gt=0, description="Final combined score / runs")
     closing_line: float = Field(..., gt=0, description="Line at game time (as it closed)")

@@ -3,822 +3,870 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ProEdge Analytics</title>
+<title>ProEdge</title>
 <style>
 :root {
-  --bg: #0c0e18;
-  --card: #13162b;
-  --card2: #1a1d2e;
-  --border: #252840;
-  --border2: #1e2138;
+  --bg:     #08090f;
+  --card:   #0f1120;
+  --card2:  #131628;
+  --border: #1c2040;
+  --border2:#242848;
   --accent: #7c6dfa;
-  --accent2: #a89cff;
-  --green: #22c55e;
-  --red: #ef4444;
+  --green:  #22c55e;
+  --red:    #ef4444;
   --yellow: #f59e0b;
-  --text: #e2e8f0;
-  --muted: #5a6480;
-  --over: #22c55e;
-  --under: #4a9dff;
+  --blue:   #3b82f6;
+  --text:   #dde3f0;
+  --muted:  #4a5070;
+  --over:   #22c55e;
+  --under:  #3b82f6;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+}
 
 /* ── Header ── */
-header { background: var(--card); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; }
-header h1 { font-size: 17px; font-weight: 700; color: #fff; }
-.header-tag { font-size: 11px; color: var(--muted); background: var(--border); padding: 2px 8px; border-radius: 12px; }
-.refresh-btn { margin-left: auto; font-size: 12px; color: var(--muted); background: var(--border); border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; transition: color .15s; }
-.refresh-btn:hover { color: var(--text); }
-
-/* ── Tabs ── */
-.tabs { display: flex; gap: 2px; padding: 0 24px; background: var(--card); border-bottom: 1px solid var(--border); }
-.tab { padding: 10px 18px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); font-weight: 500; font-size: 13px; transition: all .15s; white-space: nowrap; }
-.tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
-.tab:hover { color: var(--text); }
-
-/* ── Layout ── */
-main { padding: 24px; max-width: 1400px; margin: 0 auto; }
-
-/* ── Stat cards ── */
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
-.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
-.card-title { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 10px; }
-.card-value { font-size: 26px; font-weight: 700; color: #fff; line-height: 1; }
-.card-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
-.card-value.green { color: var(--green); }
-.card-value.red { color: var(--red); }
-.card-value.yellow { color: var(--yellow); }
-
-/* ── Section ── */
-.section { margin-bottom: 28px; }
-.section-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
-.badge { font-size: 11px; background: var(--border); color: var(--muted); padding: 2px 7px; border-radius: 4px; font-weight: 600; }
-
-/* ── Filter bar ── */
-.filter-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-.filter-bar select, .filter-bar input {
-  background: var(--card2); border: 1px solid var(--border); color: var(--text);
-  padding: 5px 10px; border-radius: 7px; font-size: 12px; outline: none;
+header {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
-.filter-bar select:focus { border-color: var(--accent); }
+.logo { font-size: 15px; font-weight: 800; color: #fff; letter-spacing: -.02em; display: flex; align-items: center; gap: 8px; }
+.logo svg { flex-shrink: 0; }
+.model-pills { display: flex; gap: 6px; margin-left: 14px; }
+.mpill {
+  font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px;
+  border: 1px solid transparent; cursor: default;
+}
+.mpill.nba { border-color: rgba(201,162,39,.3); color: #c9a227; background: rgba(201,162,39,.07); }
+.mpill.mlb { border-color: rgba(239,68,68,.3);  color: #ef4444; background: rgba(239,68,68,.07); }
+.mpill.nfl { border-color: rgba(59,130,246,.3); color: #3b82f6; background: rgba(59,130,246,.07); }
 
-/* ── Prediction card ── */
-.pred-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; transition: border-color .15s; }
-.pred-card:hover { border-color: var(--border2); }
-.pred-card.expanded { border-color: var(--accent); }
+#refresh-status {
+  font-size: 11px; color: var(--muted); white-space: nowrap;
+  display: none;
+}
 
-.pred-main { display: grid; grid-template-columns: 2fr 1fr 1fr 1.5fr 1fr 1fr 1fr 36px; align-items: center; padding: 14px 16px; cursor: pointer; gap: 8px; }
-@media (max-width: 900px) { .pred-main { grid-template-columns: 1fr 1fr 1fr; } }
+.scan-btn {
+  margin-left: auto;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: opacity .15s;
+}
+.scan-btn:hover { opacity: .85; }
+.scan-btn:disabled { opacity: .5; cursor: default; }
 
-.matchup { display: flex; flex-direction: column; gap: 3px; }
-.matchup-teams { font-weight: 700; font-size: 15px; color: #fff; }
-.matchup-sub { font-size: 11px; color: var(--muted); }
+/* ── Main ── */
+main { max-width: 1100px; margin: 0 auto; padding: 32px 20px 80px; }
 
-.sport-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; letter-spacing: .05em; }
-.sport-badge.nba { background: #2d1f00; color: #c9a227; }
-.sport-badge.nfl { background: #0d1f3c; color: #4a9dff; }
-.sport-badge.mlb { background: #2d0a0a; color: #e74c3c; }
+/* ── Landing CTA ── */
+#cta {
+  text-align: center;
+  padding: 80px 20px;
+}
+#cta h2 { font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 10px; letter-spacing: -.02em; }
+#cta p  { color: var(--muted); font-size: 14px; margin-bottom: 28px; }
+.cta-scan-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 28px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity .15s;
+}
+.cta-scan-btn:hover { opacity: .85; }
 
-.line-display { text-align: center; }
-.line-num { font-size: 18px; font-weight: 700; color: #fff; }
-.line-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+/* ── Section header ── */
+.sec-hd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.sec-title { font-size: 13px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: .06em; }
+.cnt-badge { background: var(--border2); color: var(--muted); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+.sec-muted { font-size: 11px; color: var(--muted); margin-left: auto; }
 
-.direction-pill { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 8px; font-size: 13px; font-weight: 700; }
-.direction-pill.over { background: rgba(34,197,94,.15); color: var(--over); border: 1px solid rgba(34,197,94,.25); }
-.direction-pill.under { background: rgba(74,157,255,.15); color: var(--under); border: 1px solid rgba(74,157,255,.25); }
+/* ── P&L Banner ── */
+#pnl-banner {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 20px;
+  margin-bottom: 24px;
+  display: none;
+}
+.pnl-inner { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.pnl-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 4px; }
+.pnl-total { font-size: 22px; font-weight: 800; }
+.pnl-total.pos { color: var(--green); }
+.pnl-total.neg { color: var(--red); }
+.pnl-total.neu { color: var(--muted); }
+.pnl-divider { width: 1px; height: 36px; background: var(--border); }
+.pnl-sport { text-align: center; min-width: 70px; }
+.pnl-sport-val { font-size: 13px; font-weight: 700; color: #fff; }
+.pnl-sport-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.pnl-note { font-size: 10px; color: var(--muted); margin-left: auto; }
 
-/* Probability bar */
-.prob-display { display: flex; flex-direction: column; gap: 4px; }
-.prob-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
-.prob-track { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
-.prob-fill-over { height: 100%; border-radius: 3px; background: var(--over); }
-.prob-fill-under { height: 100%; border-radius: 3px; background: var(--under); }
-.prob-val { font-weight: 600; width: 36px; text-align: right; font-size: 12px; }
+/* ── Game cards ── */
+.game-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  transition: border-color .15s;
+}
+.game-card.open { border-color: var(--accent); }
 
-/* Confidence */
-.conf-cell { display: flex; flex-direction: column; gap: 3px; align-items: center; }
-.conf-tier { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 2px 6px; border-radius: 4px; }
-.conf-tier.weak { background: rgba(100,116,128,.15); color: var(--muted); }
-.conf-tier.moderate { background: rgba(245,158,11,.12); color: var(--yellow); }
-.conf-tier.strong { background: rgba(34,197,94,.12); color: var(--green); }
-.conf-tier.very-strong { background: rgba(34,197,94,.2); color: #4ade80; }
-.conf-num { font-size: 18px; font-weight: 700; color: #fff; }
+.card-row {
+  display: grid;
+  grid-template-columns: 1fr 82px 120px 110px 130px 32px;
+  align-items: center;
+  padding: 14px 16px;
+  cursor: pointer;
+  gap: 12px;
+}
+@media (max-width: 700px) {
+  .card-row { grid-template-columns: 1fr 82px 32px; }
+  .card-row .hide-sm { display: none; }
+}
 
-/* Result */
-.pill { display: inline-block; padding: 3px 9px; border-radius: 5px; font-size: 11px; font-weight: 700; }
-.pill.correct { background: rgba(34,197,94,.15); color: var(--green); }
-.pill.wrong { background: rgba(239,68,68,.15); color: var(--red); }
-.pill.pending { background: var(--border); color: var(--muted); }
-.pill.over { background: rgba(34,197,94,.15); color: var(--over); }
-.pill.under { background: rgba(74,157,255,.15); color: var(--under); }
+.matchup-name { font-size: 15px; font-weight: 700; color: #fff; line-height: 1.2; }
+.matchup-meta { margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+.sport-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.sport-dot.nba { background: #c9a227; }
+.sport-dot.mlb { background: #ef4444; }
+.sport-dot.nfl { background: #3b82f6; }
+.sport-lbl { font-size: 11px; font-weight: 700; color: var(--muted); }
 
-.clv-pos { color: var(--green); font-weight: 600; }
-.clv-neg { color: var(--red); font-weight: 600; }
+.line-block { text-align: center; }
+.line-val { font-size: 20px; font-weight: 800; color: #fff; }
+.line-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+.line-move {
+  font-size: 10px; font-weight: 700; margin-top: 1px;
+  display: flex; align-items: center; justify-content: center; gap: 2px;
+}
+.line-move.up   { color: #f97316; }  /* orange = line rose (harder to bet over) */
+.line-move.down { color: var(--green); }  /* green = line fell */
 
-.expand-btn { width: 28px; height: 28px; border-radius: 6px; background: var(--border); border: none; color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0; }
-.expand-btn:hover { background: var(--accent); color: #fff; }
-.expand-btn svg { transition: transform .2s; }
-.expanded .expand-btn svg { transform: rotate(180deg); }
+.dir-block { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.dir-arrow { font-size: 18px; font-weight: 900; line-height: 1; }
+.dir-arrow.over  { color: var(--over); }
+.dir-arrow.under { color: var(--under); }
+.dir-pct { font-size: 13px; font-weight: 700; }
+.dir-pct.over  { color: var(--over); }
+.dir-pct.under { color: var(--under); }
 
-/* ── Expand detail panel ── */
-.pred-detail { display: none; border-top: 1px solid var(--border); background: var(--card2); padding: 20px; }
-.pred-detail.open { display: block; }
+.conf-block { text-align: center; }
+.conf-pct { font-size: 15px; font-weight: 700; color: #fff; }
+.conf-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 6px; border-radius: 4px; margin-top: 3px; display: inline-block; }
+.conf-label.weak     { background: rgba(74,80,112,.2); color: var(--muted); }
+.conf-label.moderate { background: rgba(245,158,11,.12); color: var(--yellow); }
+.conf-label.strong   { background: rgba(34,197,94,.12); color: var(--green); }
+.conf-label.lock     { background: rgba(34,197,94,.2); color: #4ade80; }
 
-.detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+.edge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.edge-pill.over  { background: rgba(34,197,94,.12); color: var(--green); border: 1px solid rgba(34,197,94,.2); }
+.edge-pill.under { background: rgba(59,130,246,.12); color: var(--under); border: 1px solid rgba(59,130,246,.2); }
+.edge-pill.none  { background: transparent; color: var(--muted); border: 1px solid var(--border); font-weight: 400; font-size: 11px; }
 
-.detail-section { }
-.detail-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 12px; font-weight: 600; }
+.chevron-btn {
+  width: 28px; height: 28px;
+  background: var(--border);
+  border: none; border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all .15s;
+}
+.chevron-btn:hover { background: var(--accent); color: #fff; }
+.chevron-btn svg { transition: transform .2s; }
+.game-card.open .chevron-btn svg { transform: rotate(180deg); }
 
-/* Probability arc gauge */
-.gauge-wrap { display: flex; flex-direction: column; align-items: center; }
-.gauge-svg { width: 180px; height: 100px; }
-.gauge-pct { font-size: 13px; font-weight: 700; margin-top: 4px; }
-.gauge-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
-.gauge-ci { font-size: 11px; color: var(--muted); margin-top: 6px; text-align: center; }
+/* ── Detail panel ── */
+.card-detail {
+  display: none;
+  border-top: 1px solid var(--border);
+  background: var(--card2);
+}
+.card-detail.open { display: block; }
 
-/* Factor bars */
-.factor-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
-.factor-name { font-size: 11px; color: var(--text); width: 180px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.factor-track { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
-.factor-fill { height: 100%; border-radius: 3px; background: var(--accent); }
-.factor-val { font-size: 11px; color: var(--muted); width: 36px; text-align: right; flex-shrink: 0; }
+/* Primary call box */
+.call-box {
+  margin: 20px 20px 0;
+  border-radius: 10px;
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.call-box.over  { background: rgba(34,197,94,.07); border: 1px solid rgba(34,197,94,.18); }
+.call-box.under { background: rgba(59,130,246,.07); border: 1px solid rgba(59,130,246,.18); }
+.call-box.none  { background: rgba(255,255,255,.02); border: 1px solid var(--border); }
 
-/* Lines comparison */
-.lines-grid { display: flex; flex-direction: column; gap: 8px; }
-.line-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--card); border-radius: 8px; border: 1px solid var(--border); }
-.line-source { display: flex; align-items: center; gap: 8px; }
-.source-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.source-name { font-size: 12px; font-weight: 600; color: var(--text); }
-.source-desc { font-size: 11px; color: var(--muted); }
-.line-value { font-size: 16px; font-weight: 700; color: #fff; }
-.line-value.null { color: var(--muted); font-size: 13px; }
-.discrepancy { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
-.disc-pos { background: rgba(34,197,94,.12); color: var(--green); }
-.disc-neg { background: rgba(239,68,68,.12); color: var(--red); }
+.call-main { flex: 1; min-width: 200px; }
+.call-verdict { font-size: 22px; font-weight: 800; color: #fff; line-height: 1.2; margin-bottom: 4px; }
+.call-verdict .over  { color: var(--over); }
+.call-verdict .under { color: var(--under); }
+.call-sub { font-size: 12px; color: var(--muted); }
 
-/* Model context */
-.model-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.meta-item { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
-.meta-key { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
-.meta-val { font-size: 14px; font-weight: 600; color: #fff; }
+.call-stats { display: flex; gap: 22px; flex-wrap: wrap; }
+.call-stat { text-align: center; }
+.call-stat-val { font-size: 18px; font-weight: 700; color: #fff; }
+.call-stat-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+.call-stat-val.over  { color: var(--over); }
+.call-stat-val.under { color: var(--under); }
 
-/* Settle form */
-.settle-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-top: 10px; }
-.form-group { display: flex; flex-direction: column; gap: 4px; }
-.form-group label { font-size: 11px; color: var(--muted); }
-.form-group input { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 7px 10px; border-radius: 7px; font-size: 13px; width: 120px; outline: none; }
-.form-group input:focus { border-color: var(--accent); }
-.btn-settle { background: var(--accent); color: #fff; border: none; padding: 8px 16px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.btn-settle:hover { background: var(--accent2); }
-.settle-result { font-size: 12px; margin-top: 8px; padding: 8px 12px; border-radius: 7px; }
-.settle-result.ok { background: rgba(34,197,94,.12); color: var(--green); }
-.settle-result.err { background: rgba(239,68,68,.12); color: var(--red); }
+/* ── Threshold matrix ── */
+.matrix-wrap { padding: 18px 20px 20px; }
+.matrix-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--muted); margin-bottom: 10px;
+}
+.matrix-scroll { overflow-x: auto; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tbl th {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted); padding: 7px 12px; border-bottom: 1px solid var(--border);
+  text-align: center; white-space: nowrap;
+}
+.tbl th:first-child { text-align: left; }
+.tbl td { padding: 8px 12px; border-bottom: 1px solid rgba(28,32,64,.6); text-align: center; vertical-align: middle; }
+.tbl td:first-child { text-align: left; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: rgba(255,255,255,.015); }
+.tbl tr.implied td { background: rgba(245,158,11,.04); }
+.tbl tr.best-over  td { background: rgba(34,197,94,.05); }
+.tbl tr.best-under td { background: rgba(59,130,246,.05); }
 
-/* ── Alert table ── */
-.alert-table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-table { width: 100%; border-collapse: collapse; }
-th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 10px 14px; border-bottom: 1px solid var(--border); font-weight: 600; }
-td { padding: 11px 14px; border-bottom: 1px solid var(--border2); font-size: 13px; }
-tr:last-child td { border-bottom: none; }
-tr:hover td { background: rgba(255,255,255,.02); }
+.thresh-num { font-size: 13px; font-weight: 700; color: #fff; }
+.tag { display: inline-block; font-size: 9px; font-weight: 800; padding: 1px 4px; border-radius: 3px; letter-spacing: .04em; vertical-align: middle; margin-left: 3px; }
+.tag-k  { background: rgba(245,158,11,.2); color: var(--yellow); }
+.tag-illiq { background: rgba(74,80,112,.2); color: var(--muted); }
 
-/* ── Model cards ── */
-.model-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-.model-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
-.model-sport { font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 14px; }
-.model-sport.nba { color: #c9a227; }
-.model-sport.nfl { color: #4a9dff; }
-.model-sport.mlb { color: #e74c3c; }
-.metric-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border2); }
-.metric-row:last-child { border-bottom: none; }
-.metric-label { color: var(--muted); font-size: 12px; }
-.metric-val { font-weight: 600; font-size: 13px; }
+.ask-pill {
+  display: inline-block; background: var(--card); border: 1px solid var(--border);
+  border-radius: 4px; padding: 2px 7px; font-size: 11px; font-weight: 700;
+  color: var(--text); font-family: monospace;
+}
 
-/* ── Training status ── */
-.status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-.dot-green { background: var(--green); box-shadow: 0 0 6px var(--green); }
-.dot-yellow { background: var(--yellow); }
-.dot-red { background: var(--red); }
+.prob-bar-wrap { display: flex; align-items: center; gap: 6px; justify-content: center; }
+.prob-bar { height: 4px; border-radius: 2px; min-width: 2px; }
+.prob-val { font-size: 12px; font-weight: 600; }
 
-.empty { color: var(--muted); text-align: center; padding: 32px; font-size: 13px; }
-.loading { color: var(--muted); text-align: center; padding: 24px; font-size: 13px; }
+.ev-pos { color: var(--green); font-weight: 700; }
+.ev-neg { color: var(--muted); }
+.ev-dash { color: var(--muted); }
 
-/* Spinner */
+.action-cell { white-space: nowrap; }
+.act-pill {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px;
+  border-radius: 6px; font-size: 11px; font-weight: 700;
+}
+.act-pill.over  { background: rgba(34,197,94,.13); color: var(--green); border: 1px solid rgba(34,197,94,.2); }
+.act-pill.under { background: rgba(59,130,246,.13); color: var(--under); border: 1px solid rgba(59,130,246,.2); }
+.act-no { color: var(--muted); font-size: 11px; }
+
+/* ── History section ── */
+#history-section { margin-top: 40px; }
+.hist-row {
+  display: grid;
+  grid-template-columns: 1fr 70px 100px 90px 80px 80px;
+  align-items: center;
+  padding: 11px 14px;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.hist-match { font-weight: 600; color: var(--text); }
+.hist-date  { color: var(--muted); font-size: 11px; }
+.dir-tag { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; }
+.dir-tag.over  { color: var(--over); }
+.dir-tag.under { color: var(--under); }
+.result-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+.result-tag.win     { background: rgba(34,197,94,.12); color: var(--green); }
+.result-tag.loss    { background: rgba(239,68,68,.12);  color: var(--red); }
+.result-tag.pending { background: var(--border); color: var(--muted); }
+.pnl-tag { font-size: 11px; font-weight: 700; text-align: right; }
+.pnl-tag.pos { color: var(--green); }
+.pnl-tag.neg { color: var(--red); }
+.pnl-tag.neu { color: var(--muted); }
+
+/* ── Utility ── */
+.spinner { width: 13px; height: 13px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; display: inline-block; vertical-align: middle; margin-right: 6px; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; display: inline-block; vertical-align: middle; margin-right: 6px; }
+.empty { color: var(--muted); font-size: 13px; padding: 30px; text-align: center; }
+.loading { color: var(--muted); font-size: 13px; padding: 22px; text-align: center; }
 </style>
 </head>
 <body>
 
 <header>
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-    <path d="M3 3v18h18" stroke="#7c6dfa" stroke-width="2" stroke-linecap="round"/>
-    <path d="M7 16l4-4 4 4 4-7" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>
-  <h1>ProEdge Analytics</h1>
-  <span class="header-tag" id="last-updated">Loading…</span>
-  <button class="refresh-btn" onclick="loadAll()">↺ Refresh</button>
+  <div class="logo">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M3 3v18h18" stroke="#7c6dfa" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M7 16l4-4 4 4 4-7" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    ProEdge
+  </div>
+  <div class="model-pills" id="model-pills"></div>
+  <span id="refresh-status"></span>
+  <button class="scan-btn" id="scan-btn" onclick="runScan()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Scan Markets
+  </button>
 </header>
-
-<div class="tabs">
-  <div class="tab active" onclick="switchTab('overview')">Overview</div>
-  <div class="tab" onclick="switchTab('predictions')">Predictions</div>
-  <div class="tab" onclick="switchTab('alerts')">Alerts</div>
-  <div class="tab" onclick="switchTab('models')">Models</div>
-</div>
 
 <main>
 
-<!-- OVERVIEW -->
-<div id="tab-overview">
-  <div class="grid" id="overview-stats">
-    <div class="card"><div class="card-title">Total Predictions</div><div class="card-value" id="stat-total">—</div><div class="card-sub">all sports</div></div>
-    <div class="card"><div class="card-title">Settled Accuracy</div><div class="card-value" id="stat-accuracy">—</div><div class="card-sub" id="stat-accuracy-sub">resolved bets</div></div>
-    <div class="card"><div class="card-title">Avg CLV</div><div class="card-value" id="stat-clv">—</div><div class="card-sub">closing line value</div></div>
-    <div class="card"><div class="card-title">Active Alerts</div><div class="card-value" id="stat-alerts">—</div><div class="card-sub">high-confidence picks</div></div>
-  </div>
-  <div class="section">
-    <div class="section-title">Training &amp; Data Status</div>
-    <div id="training-status-cards" class="model-grid"></div>
-  </div>
-</div>
-
-<!-- PREDICTIONS -->
-<div id="tab-predictions" style="display:none">
-  <div class="filter-bar">
-    <select id="sport-filter" onchange="loadPredictions()">
-      <option value="">All Sports</option>
-      <option value="nba">NBA</option>
-      <option value="nfl">NFL</option>
-      <option value="mlb">MLB</option>
-    </select>
-    <select id="dir-filter" onchange="loadPredictions()">
-      <option value="">All Directions</option>
-      <option value="over">Over</option>
-      <option value="under">Under</option>
-    </select>
-    <select id="conf-filter" onchange="loadPredictions()">
-      <option value="">All Confidence</option>
-      <option value="strong">Strong (30%+)</option>
-      <option value="moderate">Moderate (15–30%)</option>
-      <option value="weak">Weak (&lt;15%)</option>
-    </select>
-    <span class="badge" id="pred-count">0</span>
-    <span style="color:var(--muted);font-size:11px;margin-left:4px">Click any row to expand</span>
-  </div>
-  <div id="pred-list"><div class="loading"><span class="spinner"></span>Loading…</div></div>
-</div>
-
-<!-- ALERTS -->
-<div id="tab-alerts" style="display:none">
-  <div class="section">
-    <div class="section-title">High-Confidence Alerts <span class="badge" id="alert-count">0</span></div>
-    <div class="alert-table-wrap">
-      <table>
-        <thead><tr>
-          <th>Sport</th><th>Matchup</th><th>Pick</th><th>Confidence</th><th>Edge</th><th>Game Date</th><th>Status</th>
-        </tr></thead>
-        <tbody id="alert-table-body"><tr><td colspan="7" class="empty">No high-confidence alerts yet</td></tr></tbody>
-      </table>
+  <!-- Landing / Scan results -->
+  <div id="scan-section">
+    <div id="cta">
+      <h2>Find Today's Edges</h2>
+      <p>Scan live Kalshi prediction markets and score them against the model.</p>
+      <button class="cta-scan-btn" onclick="runScan()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Scan Markets
+      </button>
+    </div>
+    <div id="scan-results" style="display:none">
+      <div class="sec-hd">
+        <span class="sec-title">Live Markets</span>
+        <span class="cnt-badge" id="scan-cnt">0</span>
+        <span class="sec-muted" id="scan-ts"></span>
+      </div>
+      <!-- P&L Banner (shown after first scan if settled predictions exist) -->
+      <div id="pnl-banner"></div>
+      <div id="scan-list"></div>
     </div>
   </div>
-</div>
 
-<!-- MODELS -->
-<div id="tab-models" style="display:none">
-  <div class="section">
-    <div class="section-title">Active Model Performance</div>
-    <div id="model-cards" class="model-grid"></div>
+  <!-- History -->
+  <div id="history-section" style="display:none">
+    <div class="sec-hd">
+      <span class="sec-title">Today's Predictions</span>
+      <span class="cnt-badge" id="hist-cnt">0</span>
+      <button onclick="autoSettle()" id="settle-btn"
+        style="margin-left:auto;font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;">
+        Auto-Settle
+      </button>
+    </div>
+    <div id="hist-list"></div>
   </div>
-</div>
 
 </main>
 
 <script>
-const API = '';
 const API_KEY = '';
-const _featImportanceCache = {};
-const _linesCache = {};
-let _allPreds = [];
 
-async function fetchJSON(path) {
-  try {
-    const r = await fetch(API + path, { headers: { 'X-API-Key': API_KEY } });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch { return null; }
+async function api(path, opts = {}) {
+  const r = await fetch(path, { headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' }, ...opts });
+  return r.ok ? r.json() : null;
 }
 
-function fmt(v, d=1) { return v == null ? '—' : Number(v).toFixed(d); }
+/* ── Helpers ── */
+function pct(v)  { return v == null ? '—' : (v * 100).toFixed(1) + '%'; }
+function f1(v)   { return v == null ? '—' : Number(v).toFixed(1); }
+function ev(v)   { return v == null ? '—' : (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + '%'; }
+function money(v){ return v == null ? '—' : (v >= 0 ? '+$' : '-$') + Math.abs(v).toFixed(2); }
+
+function confLabel(c) {
+  if (c >= .40) return { label: 'Lock',     cls: 'lock' };
+  if (c >= .28) return { label: 'Strong',   cls: 'strong' };
+  if (c >= .14) return { label: 'Moderate', cls: 'moderate' };
+  return               { label: 'Weak',     cls: 'weak' };
+}
 
 function timeAgo(iso) {
-  if (!iso) return '—';
-  const diff = (Date.now() - new Date(iso)) / 1000;
-  if (diff < 60) return `${Math.round(diff)}s ago`;
-  if (diff < 3600) return `${Math.round(diff/60)}m ago`;
-  if (diff < 86400) return `${Math.round(diff/3600)}h ago`;
-  return new Date(iso).toLocaleDateString();
+  if (!iso) return '';
+  const s = (Date.now() - new Date(iso)) / 1000;
+  if (s < 60) return `${Math.round(s)}s ago`;
+  if (s < 3600) return `${Math.round(s / 60)}m ago`;
+  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function fmtDate(iso) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+const CHV = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+/* ── Model pills ── */
+async function loadModelPills() {
+  const [perf, live] = await Promise.all([
+    api('/models/performance'),
+    api('/predictions/performance'),
+  ]);
+
+  const latestModels = {};
+  if (perf && perf.length) {
+    perf.forEach(m => {
+      if (!latestModels[m.sport] || m.trained_at > latestModels[m.sport].trained_at)
+        latestModels[m.sport] = m;
+    });
+  }
+
+  const el = document.getElementById('model-pills');
+  const sports = ['nba', 'mlb', 'nfl'];
+  el.innerHTML = sports.map(sport => {
+    const m = latestModels[sport];
+    const trainAcc = m && m.accuracy != null ? (m.accuracy * 100).toFixed(0) + '% train' : null;
+    const liveData = live && live[sport];
+    const liveStr = liveData && liveData.total_settled > 0
+      ? `${liveData.wins}/${liveData.total_settled} live`
+      : null;
+    const label = liveStr || trainAcc || '—';
+    return `<span class="mpill ${sport}">${sport.toUpperCase()} ${label}</span>`;
+  }).join('');
 }
 
-function confTier(c) {
-  if (c >= .40) return { label: 'Very Strong', cls: 'very-strong' };
-  if (c >= .30) return { label: 'Strong', cls: 'strong' };
-  if (c >= .15) return { label: 'Moderate', cls: 'moderate' };
-  return { label: 'Weak', cls: 'weak' };
+/* ── Auto-refresh ── */
+const REFRESH_INTERVAL = 300; // 5 minutes
+let _refreshSecondsLeft = 0;
+let _refreshTimer = null;
+
+function startAutoRefresh() {
+  clearInterval(_refreshTimer);
+  _refreshSecondsLeft = REFRESH_INTERVAL;
+  const status = document.getElementById('refresh-status');
+  status.style.display = '';
+  _refreshTimer = setInterval(() => {
+    _refreshSecondsLeft--;
+    if (_refreshSecondsLeft <= 0) {
+      runScan(true);
+      _refreshSecondsLeft = REFRESH_INTERVAL;
+    }
+    const m = Math.floor(_refreshSecondsLeft / 60);
+    const s = (_refreshSecondsLeft % 60).toString().padStart(2, '0');
+    status.textContent = `Auto-refresh in ${m}:${s}`;
+  }, 1000);
 }
 
-function confExplain(c, dir, probOver, probUnder) {
-  const dist = Math.abs(probOver - 0.5);
-  const favored = dir === 'over' ? probOver : probUnder;
-  const pct = (favored * 100).toFixed(1);
-  if (c < .15) return `The model is only ${pct}% confident the total goes ${dir} — just ${(dist*100).toFixed(1)} percentage points from a coin flip. This is a mild lean, not a strong signal.`;
-  if (c < .30) return `The model gives ${pct}% probability of ${dir} — a moderate lean. Worth watching but not high-conviction.`;
-  if (c < .40) return `The model is ${pct}% confident the total goes ${dir}. This is a strong signal relative to the historical base rate.`;
-  return `Very high conviction: ${pct}% probability of ${dir}. The model's inputs are clearly skewed in one direction.`;
-}
+/* ── P&L banner ── */
+async function loadPnlBanner() {
+  const data = await api('/predictions/performance');
+  if (!data) return;
 
-// Human-readable feature name mapping
-function friendlyFeature(name) {
-  const map = {
-    total_line: 'Posted total line (o/u)',
-    home_advantage: 'Home court advantage',
-    home_rest_days: 'Home rest days', away_rest_days: 'Away rest days',
-    home_back_to_back: 'Home back-to-back', away_back_to_back: 'Away back-to-back',
-    home_rest_advantage: 'Rest day advantage (home − away)',
-    wind_speed_mph: 'Wind speed (MPH)', temperature_f: 'Temperature (°F)',
-    is_dome: 'Indoor/dome game', altitude_feet: 'Stadium altitude',
-    is_playoff: 'Playoff game', altitude_boost: 'Altitude scoring boost',
-    line_movement: 'Line movement (open→close)',
-    public_over_pct: 'Public betting % (over)',
-    sharp_over_pct: 'Sharp money % (over)',
-    sharp_vs_public: 'Sharp vs public disagreement',
-    line_move_magnitude: 'Line move size',
-    ref_foul_rate: 'Ref foul rate vs avg', ump_walk_rate: 'Ump walk rate vs avg',
-    home_key_players_out: 'Home key players out',
-    away_key_players_out: 'Away key players out',
-    injury_pts_impact: 'Injury scoring impact',
-    h2h_over_rate: 'Head-to-head over rate',
-    h2h_avg_total: 'Head-to-head avg total',
-    home_over_streak: 'Home over/under streak',
-    away_over_streak: 'Away over/under streak',
-    season_progress: 'Season progress (0–1)',
-  };
-  if (map[name]) return map[name];
-  // Auto-format: home_pointsScored_roll10_mean → Home 10-game scoring avg
-  return name
-    .replace(/^home_/, 'Home ')
-    .replace(/^away_/, 'Away ')
-    .replace(/_roll(\d+)_mean$/, ' $1-game avg')
-    .replace(/_roll(\d+)_std$/, ' $1-game volatility')
-    .replace(/pointsScored/, 'scoring')
-    .replace(/pointsAllowed/, 'defense')
-    .replace(/_/g, ' ');
-}
+  const sports = ['nba', 'mlb', 'nfl'];
+  const totalPnl = sports.reduce((sum, s) => sum + (data[s]?.pnl || 0), 0);
+  const totalSettled = sports.reduce((sum, s) => sum + (data[s]?.total_settled || 0), 0);
 
-// SVG arc probability gauge
-function probGaugeSVG(probOver, probUnder, dir) {
-  const W = 180, H = 100, cx = 90, cy = 92, r = 76;
-  // Arc from 180° (left=0% over) to 0° (right=100% over)
-  const toRad = deg => deg * Math.PI / 180;
-  const arcPt = (deg) => {
-    const a = toRad(180 - deg * 180); // map 0–1 to 180°–0°
-    return [cx + r * Math.cos(a), cy - r * Math.sin(a)];
-  };
-  const arcPath = (pct, color, width=8) => {
-    if (pct <= 0) return '';
-    if (pct >= 1) pct = 0.9999;
-    const [sx, sy] = arcPt(0);
-    const [ex, ey] = arcPt(pct);
-    const large = pct > 0.5 ? 1 : 0;
-    return `<path d="M${sx},${sy} A${r},${r} 0 ${large} 1 ${ex},${ey}" stroke="${color}" stroke-width="${width}" fill="none" stroke-linecap="round"/>`;
-  };
+  if (totalSettled === 0) return;
 
-  const [mx, my] = arcPt(0.5); // 50% mark
+  const pnlCls = totalPnl > 0 ? 'pos' : totalPnl < 0 ? 'neg' : 'neu';
+  const sportHtml = sports.map(s => {
+    const d = data[s];
+    if (!d || d.total_settled === 0) return '';
+    const pnlCls = d.pnl > 0 ? 'pos' : d.pnl < 0 ? 'neg' : 'neu';
+    const rate = d.hit_rate != null ? (d.hit_rate * 100).toFixed(0) + '%' : '—';
+    return `
+      <div class="pnl-sport">
+        <div class="pnl-label">${s.toUpperCase()}</div>
+        <div class="pnl-sport-val" style="color:${d.pnl > 0 ? 'var(--green)' : d.pnl < 0 ? 'var(--red)' : '#fff'}">${money(d.pnl)}</div>
+        <div class="pnl-sport-sub">${d.wins}/${d.total_settled} · ${rate}</div>
+      </div>`;
+  }).filter(Boolean).join('<div class="pnl-divider"></div>');
 
-  return `<svg class="gauge-svg" viewBox="0 0 ${W} ${H}">
-    <!-- Background arc -->
-    ${arcPath(1, 'var(--border)', 8)}
-    <!-- Under arc (left of 50%) -->
-    ${probUnder > 0.5 ? arcPath(probUnder, 'var(--under)', 8) : ''}
-    <!-- Over arc (right portion) — we draw from right -->
-    ${probOver > 0.5 ? `<path d="M${arcPt(1)[0]},${arcPt(1)[1]} A${r},${r} 0 ${probOver>0.5?1:0} 0 ${arcPt(1-probOver)[0]},${arcPt(1-probOver)[1]}" stroke="var(--over)" stroke-width="8" fill="none" stroke-linecap="round"/>` : ''}
-    <!-- 50% center marker -->
-    <line x1="${mx}" y1="${my-14}" x2="${mx}" y2="${my+2}" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="3,2"/>
-    <text x="${mx}" y="${my-18}" text-anchor="middle" fill="var(--muted)" font-size="9">50%</text>
-    <!-- Under label -->
-    <text x="6" y="${H-4}" fill="var(--under)" font-size="10" font-weight="700">UNDER</text>
-    <text x="6" y="${H-16}" fill="var(--under)" font-size="12" font-weight="800">${(probUnder*100).toFixed(1)}%</text>
-    <!-- Over label -->
-    <text x="${W-6}" y="${H-4}" text-anchor="end" fill="var(--over)" font-size="10" font-weight="700">OVER</text>
-    <text x="${W-6}" y="${H-16}" text-anchor="end" fill="var(--over)" font-size="12" font-weight="800">${(probOver*100).toFixed(1)}%</text>
-  </svg>`;
-}
-
-function renderPredCard(p) {
-  const dir = p.predicted_direction;
-  const tier = confTier(p.confidence);
-  const confPct = Math.round((p.confidence||0)*100);
-  const sportBadge = `<span class="sport-badge ${p.sport}">${(p.sport||'').toUpperCase()}</span>`;
-  const homeTeam = p.home_team || '—';
-  const awayTeam = p.away_team || '—';
-  const line = p.total_line ? p.total_line.toFixed(1) : '—';
-  const gameDate = fmtDate(p.game_date);
-  const result = p.is_correct == null
-    ? '<span class="pill pending">Pending</span>'
-    : p.is_correct
-      ? '<span class="pill correct">✓ Win</span>'
-      : '<span class="pill wrong">✗ Loss</span>';
-  const clvStr = p.clv != null
-    ? `<span class="${p.clv>=0?'clv-pos':'clv-neg'}">${p.clv>=0?'+':''}${p.clv.toFixed(1)}</span>`
-    : '<span style="color:var(--muted)">—</span>';
-  const pid = p.prediction_id;
-
-  return `<div class="pred-card" id="card-${pid}">
-    <div class="pred-main" onclick="toggleExpand('${pid}', ${JSON.stringify(p).replace(/"/g,'&quot;')})">
-      <div class="matchup">
-        <div class="matchup-teams">${homeTeam} <span style="color:var(--muted);font-weight:400">vs</span> ${awayTeam}</div>
-        <div class="matchup-sub">${sportBadge} &nbsp;${gameDate}</div>
+  const banner = document.getElementById('pnl-banner');
+  banner.style.display = '';
+  banner.innerHTML = `
+    <div class="pnl-inner">
+      <div>
+        <div class="pnl-label">Paper P&amp;L</div>
+        <div class="pnl-total ${pnlCls}">${money(totalPnl)}</div>
       </div>
-      <div class="line-display">
-        <div class="line-num">${line}</div>
-        <div class="line-label">Total Line</div>
-      </div>
-      <div><span class="direction-pill ${dir}">${dir === 'over' ? '▲' : '▼'} ${dir.toUpperCase()}</span></div>
-      <div class="prob-display">
-        <div class="prob-row" style="color:var(--over)">
-          <span style="font-size:10px;width:36px">OVER</span>
-          <div class="prob-track"><div class="prob-fill-over" style="width:${(p.prob_over*100).toFixed(1)}%"></div></div>
-          <span class="prob-val" style="color:var(--over)">${(p.prob_over*100).toFixed(1)}%</span>
+      <div class="pnl-divider"></div>
+      ${sportHtml}
+      <div class="pnl-note">$100/bet · -110 odds · ${totalSettled} settled</div>
+    </div>`;
+}
+
+/* ── SCAN ── */
+let _scans = [];
+
+async function runScan(isAuto = false) {
+  const btn = document.getElementById('scan-btn');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span>Scanning…`;
+
+  document.getElementById('cta').style.display = 'none';
+  document.getElementById('scan-results').style.display = '';
+  if (!isAuto) {
+    document.getElementById('scan-list').innerHTML = `<div class="loading"><span class="spinner"></span>Querying Kalshi markets and scoring against model…</div>`;
+  }
+
+  const data = await api('/predictions/scan', {
+    method: 'POST',
+    body: JSON.stringify({ sports: ['nba', 'mlb', 'nfl'] }),
+  });
+
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Scan Markets`;
+
+  if (!data) {
+    document.getElementById('scan-list').innerHTML = `<div class="empty" style="color:var(--red)">Scan failed — check server.</div>`;
+    return;
+  }
+
+  _scans = (data.results || []).sort((a, b) => {
+    const ae = a.best_edge ?? -99, be = b.best_edge ?? -99;
+    return be - ae;
+  });
+
+  document.getElementById('scan-cnt').textContent = _scans.length;
+  document.getElementById('scan-ts').textContent = 'scanned ' + timeAgo(data.scanned_at);
+
+  // Re-render cards (preserve open state if auto-refresh)
+  const openCards = new Set();
+  if (isAuto) {
+    document.querySelectorAll('.game-card.open').forEach(el => {
+      openCards.add(el.id);
+    });
+  }
+
+  document.getElementById('scan-list').innerHTML = _scans.length
+    ? _scans.map((r, i) => buildCard(r, i)).join('')
+    : `<div class="empty">No open Kalshi markets found. Try again closer to game time.</div>`;
+
+  // Re-open cards that were open before auto-refresh
+  if (isAuto) {
+    openCards.forEach(id => {
+      const idx = parseInt(id.replace('gc-', ''));
+      if (!isNaN(idx)) {
+        const card = document.getElementById(id);
+        const detail = document.getElementById(`gd-${idx}`);
+        if (card && detail) {
+          card.classList.add('open');
+          detail.classList.add('open');
+          detail.dataset.loaded = '1';
+          detail.innerHTML = buildDetail(_scans[idx]);
+        }
+      }
+    });
+  }
+
+  loadHistory();
+  loadPnlBanner();
+  loadModelPills();
+  startAutoRefresh();
+}
+
+/* ── Build scan card ── */
+function buildCard(r, i) {
+  const dir   = r.predicted_direction;
+  const prob  = dir === 'over' ? r.model_prob_over : r.model_prob_under;
+  const conf  = confLabel(r.confidence);
+  const hasEdge = r.best_bet != null && r.best_edge != null;
+
+  const edgeHtml = hasEdge
+    ? `<span class="edge-pill ${r.best_bet}">
+         ${r.best_bet === 'over' ? '▲' : '▼'} ${r.best_bet.toUpperCase()} ${r.best_threshold}
+         <span style="font-size:10px;opacity:.75">+${(r.best_edge*100).toFixed(1)}%</span>
+       </span>`
+    : `<span class="edge-pill none">No edge</span>`;
+
+  // Line movement indicator
+  const mv = r.line_movement;
+  const mvHtml = mv != null && Math.abs(mv) >= 0.05
+    ? `<div class="line-move ${mv > 0 ? 'up' : 'down'}">${mv > 0 ? '▲' : '▼'} ${Math.abs(mv).toFixed(1)}</div>`
+    : '';
+
+  return `<div class="game-card" id="gc-${i}">
+    <div class="card-row" onclick="toggleCard(${i})">
+      <div>
+        <div class="matchup-name">${r.home_team} <span style="color:var(--muted);font-weight:400">vs</span> ${r.away_team}</div>
+        <div class="matchup-meta">
+          <span class="sport-dot ${r.sport}"></span>
+          <span class="sport-lbl">${r.sport.toUpperCase()}</span>
         </div>
-        <div class="prob-row" style="color:var(--under)">
-          <span style="font-size:10px;width:36px">UNDR</span>
-          <div class="prob-track"><div class="prob-fill-under" style="width:${(p.prob_under*100).toFixed(1)}%"></div></div>
-          <span class="prob-val" style="color:var(--under)">${(p.prob_under*100).toFixed(1)}%</span>
-        </div>
       </div>
-      <div class="conf-cell">
-        <span class="conf-tier ${tier.cls}">${tier.label}</span>
-        <span class="conf-num">${confPct}%</span>
+      <div class="line-block">
+        <div class="line-val">${f1(r.kalshi_implied_line)}</div>
+        ${mvHtml}
+        <div class="line-lbl">Line</div>
       </div>
-      <div>${result} ${clvStr !== '' ? '<br><small>'+clvStr+'</small>' : ''}</div>
-      <div style="color:var(--muted);font-size:12px">${timeAgo(p.predicted_at)}</div>
-      <button class="expand-btn" title="Expand"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div class="dir-block hide-sm">
+        <span class="dir-arrow ${dir}">${dir === 'over' ? '▲' : '▼'}</span>
+        <span class="dir-pct ${dir}">${pct(prob)}</span>
+      </div>
+      <div class="conf-block hide-sm">
+        <div class="conf-pct">${Math.round(r.confidence * 100)}%</div>
+        <span class="conf-label ${conf.cls}">${conf.label}</span>
+      </div>
+      <div class="hide-sm">${edgeHtml}</div>
+      <button class="chevron-btn">${CHV}</button>
     </div>
-    <div class="pred-detail" id="detail-${pid}">
-      <div class="loading"><span class="spinner"></span>Loading analysis…</div>
+    <div class="card-detail" id="gd-${i}">
+      <div class="loading"><span class="spinner"></span>Loading…</div>
     </div>
   </div>`;
 }
 
-async function toggleExpand(pid, pData) {
-  const card = document.getElementById('card-' + pid);
-  const detail = document.getElementById('detail-' + pid);
-  const isOpen = detail.classList.contains('open');
-  if (isOpen) {
-    detail.classList.remove('open');
-    card.classList.remove('expanded');
-    return;
-  }
-  card.classList.add('expanded');
+function toggleCard(i) {
+  const card   = document.getElementById(`gc-${i}`);
+  const detail = document.getElementById(`gd-${i}`);
+  const isOpen = card.classList.contains('open');
+  if (isOpen) { card.classList.remove('open'); detail.classList.remove('open'); return; }
+  card.classList.add('open');
   detail.classList.add('open');
   if (detail.dataset.loaded) return;
   detail.dataset.loaded = '1';
-
-  const p = pData;
-  const sport = p.sport;
-  const home = p.home_team;
-  const away = p.away_team;
-
-  // Fetch feature importance and lines comparison in parallel
-  const [featImp, lines] = await Promise.all([
-    fetchFeatImportance(sport),
-    fetchLines(sport, home, away),
-  ]);
-
-  detail.innerHTML = renderDetail(p, featImp, lines);
+  detail.innerHTML = buildDetail(_scans[i]);
 }
 
-async function fetchFeatImportance(sport) {
-  if (_featImportanceCache[sport]) return _featImportanceCache[sport];
-  const data = await fetchJSON(`/models/feature-importance/${sport}`);
-  if (data) _featImportanceCache[sport] = data;
-  return data;
-}
+/* ── Build detail panel ── */
+function buildDetail(r) {
+  const dir    = r.predicted_direction;
+  const prob   = dir === 'over' ? r.model_prob_over : r.model_prob_under;
+  const hasEdge = r.best_bet != null && r.best_edge != null;
 
-async function fetchLines(sport, home, away) {
-  const key = `${sport}|${home}|${away}`;
-  if (_linesCache[key] !== undefined) return _linesCache[key];
-  const data = await fetchJSON(`/lines/compare/${sport}/${encodeURIComponent(home)}/${encodeURIComponent(away)}`);
-  _linesCache[key] = data;
-  return data;
-}
+  /* Primary call box */
+  const callBoxCls = hasEdge ? r.best_bet : 'none';
+  let callVerdict, callSub;
 
-function renderDetail(p, featImp, lines) {
-  const dir = p.predicted_direction;
-  const tier = confTier(p.confidence);
-  const ciSpread = ((p.ci_upper - p.ci_lower) * 100).toFixed(1);
+  if (hasEdge) {
+    const side = r.best_bet === 'over' ? '▲ OVER' : '▼ UNDER';
+    callVerdict = `<span class="${r.best_bet}">${side}</span> ${r.best_threshold}`;
+    callSub = `on Kalshi · ${(r.best_edge * 100).toFixed(1)}% EV edge`;
+  } else {
+    callVerdict = `<span style="color:var(--muted)">No edge</span>`;
+    callSub = 'Market priced fairly — skip this game';
+  }
 
-  // Section 1: Probability gauge + explanation
-  const gaugeHtml = `
-    <div class="detail-section">
-      <div class="detail-label">Prediction Analysis</div>
-      <div class="gauge-wrap">
-        ${probGaugeSVG(p.prob_over, p.prob_under, dir)}
-        <div class="gauge-ci">
-          Model agreement range: ${(p.ci_lower*100).toFixed(1)}% – ${(p.ci_upper*100).toFixed(1)}% over
-          &nbsp;(±${(ciSpread/2).toFixed(1)}pp spread)
-        </div>
+  // Line movement context in call box subtitle
+  const mv = r.line_movement;
+  const mvNote = mv != null && Math.abs(mv) >= 0.05
+    ? ` · line ${mv > 0 ? '▲' : '▼'} ${Math.abs(mv).toFixed(1)} since first seen`
+    : '';
+
+  const callBox = `
+    <div class="call-box ${callBoxCls}">
+      <div class="call-main">
+        <div class="call-verdict">${callVerdict}</div>
+        <div class="call-sub">${callSub}${mvNote}</div>
       </div>
-      <div style="margin-top:14px;padding:12px;background:var(--card);border-radius:8px;border:1px solid var(--border)">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-          <span class="conf-tier ${tier.cls}">${tier.label} signal</span>
-          <span style="font-size:12px;color:var(--muted)">${Math.round(p.confidence*100)}% confidence</span>
+      <div class="call-stats">
+        <div class="call-stat">
+          <div class="call-stat-val over">${pct(r.model_prob_over)}</div>
+          <div class="call-stat-lbl">Over</div>
         </div>
-        <div style="font-size:12px;color:var(--text);line-height:1.6">${confExplain(p.confidence, dir, p.prob_over, p.prob_under)}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:8px">
-          The CI spread (±${(ciSpread/2).toFixed(1)}pp) shows ${parseFloat(ciSpread) < 2 ? 'XGBoost and LightGBM agree closely — consistent ensemble.' : 'some divergence between XGBoost and LightGBM — treat with more caution.'}
+        <div class="call-stat">
+          <div class="call-stat-val under">${pct(r.model_prob_under)}</div>
+          <div class="call-stat-lbl">Under</div>
+        </div>
+        <div class="call-stat">
+          <div class="call-stat-val">${Math.round(r.confidence * 100)}%</div>
+          <div class="call-stat-lbl">Conf.</div>
+        </div>
+        <div class="call-stat">
+          <div class="call-stat-val">${f1(r.kalshi_implied_line)}</div>
+          <div class="call-stat-lbl">Kalshi</div>
         </div>
       </div>
     </div>`;
 
-  // Section 2: Market lines comparison
-  const bookLine = lines?.book_line;
-  const ppLine = lines?.prizepicks_line;
-  const kalshiLine = lines?.kalshi_line;
-  const postedLine = p.total_line;
-  const linesHtml = `
-    <div class="detail-section">
-      <div class="detail-label">Line Sources</div>
-      <div class="lines-grid">
-        <div class="line-row">
-          <div class="line-source">
-            <div class="source-dot" style="background:#7c6dfa"></div>
-            <div><div class="source-name">Model Input</div><div class="source-desc">Line used for prediction</div></div>
-          </div>
-          <div class="line-value">${postedLine ? postedLine.toFixed(1) : '—'}</div>
-        </div>
-        <div class="line-row">
-          <div class="line-source">
-            <div class="source-dot" style="background:#22c55e"></div>
-            <div><div class="source-name">Sportsbooks</div><div class="source-desc">Consensus across books</div></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            ${bookLine ? `<div class="line-value">${bookLine.toFixed(1)}</div>` : '<div class="line-value null">Not set</div>'}
-          </div>
-        </div>
-        <div class="line-row">
-          <div class="line-source">
-            <div class="source-dot" style="background:#f59e0b"></div>
-            <div><div class="source-name">Kalshi Market</div><div class="source-desc">Prediction market implied</div></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            ${kalshiLine ? `<div class="line-value">${kalshiLine.toFixed(1)}</div>
-              ${lines.kalshi_nearest_prob ? `<span style="font-size:11px;color:var(--muted)">${(lines.kalshi_nearest_prob*100).toFixed(0)}% over @${lines.kalshi_nearest_threshold}</span>` : ''}
-              ${lines.kalshi_vs_book != null ? `<span class="discrepancy ${lines.kalshi_vs_book>=0?'disc-pos':'disc-neg'}">${lines.kalshi_vs_book>=0?'+':''}${lines.kalshi_vs_book.toFixed(1)}</span>` : ''}`
-            : '<div class="line-value null">No market yet</div>'}
-          </div>
-        </div>
-        <div class="line-row">
-          <div class="line-source">
-            <div class="source-dot" style="background:#4a9dff"></div>
-            <div><div class="source-name">PrizePicks</div><div class="source-desc">DFS projected total</div></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            ${ppLine ? `<div class="line-value">${ppLine.toFixed(1)}</div>
-              ${lines.pp_vs_book != null ? `<span class="discrepancy ${lines.pp_vs_book>=0?'disc-pos':'disc-neg'}">${lines.pp_vs_book>=0?'+':''}${lines.pp_vs_book.toFixed(1)}</span>` : ''}`
-            : '<div class="line-value null">Not posted</div>'}
-          </div>
-        </div>
-      </div>
-      ${kalshiLine && bookLine ? `<div style="margin-top:10px;font-size:11px;color:var(--muted);padding:8px 10px;background:var(--card);border-radius:6px;border:1px solid var(--border)">
-        Kalshi is ${Math.abs(lines.kalshi_vs_book).toFixed(1)} pts ${lines.kalshi_vs_book > 0 ? 'above' : 'below'} the books.
-        ${Math.abs(lines.kalshi_vs_book) > 1.5 ? ' <strong style="color:var(--yellow)">Notable discrepancy</strong> — the prediction market disagrees with bookmakers.' : ' Markets are broadly aligned.'}
-      </div>` : ''}
-    </div>`;
+  /* Threshold matrix */
+  const thr = r.thresholds || [];
+  let matrixHtml = '';
+  if (thr.length) {
+    const implied = r.kalshi_implied_line;
+    const nearestIdx = implied != null
+      ? thr.reduce((best, t, i) =>
+          Math.abs(t.threshold - implied) < Math.abs(thr[best].threshold - implied) ? i : best, 0)
+      : -1;
 
-  // Section 3: Top features
-  let featHtml = '';
-  if (featImp && featImp.top_features) {
-    const ensemble = featImp.top_features.ensemble || {};
-    const keys = Object.keys(ensemble);
-    const vals = keys.map(k => ensemble[k]);
-    const maxVal = Math.max(...vals);
-    featHtml = `
-      <div class="detail-section">
-        <div class="detail-label">What the model weighs most (${(p.sport||'').toUpperCase()})</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
-          These are the features with the highest importance in the trained ${(p.sport||'').toUpperCase()} ensemble — not per-prediction values, but what the model has learned matters most historically.
+    const rows = thr.map((t, idx) => {
+      const illiquid   = t.market_prob <= 0.12 || t.market_prob >= 0.88;
+      const isNearest  = idx === nearestIdx;
+      const outOfRange = implied != null && Math.abs(t.threshold - implied) > 3.0;
+      const isBestO    = t.best_bet === 'over';
+      const isBestU    = t.best_bet === 'under';
+
+      let rowCls = '';
+      if (isBestO) rowCls = 'best-over';
+      else if (isBestU) rowCls = 'best-under';
+      else if (isNearest) rowCls = 'implied';
+
+      const mpBarW = Math.round(Math.min(t.market_prob * 100, 56));
+      const mpColor = t.market_prob >= 0.5 ? 'var(--over)' : 'var(--under)';
+      const mdBarW  = t.model_prob != null ? Math.round(Math.min(t.model_prob * 100, 56)) : 0;
+      const dimStyle = outOfRange ? 'opacity:.45' : '';
+
+      const actionHtml = illiquid
+        ? `<span class="act-no">Illiquid</span>`
+        : outOfRange
+          ? `<span class="act-no" title="Outside ±3 of implied line — model unreliable here">—</span>`
+          : t.best_bet
+            ? `<span class="act-pill ${t.best_bet}">${t.best_bet === 'over' ? '▲' : '▼'} ${t.best_bet.toUpperCase()} ${t.edge ? `<span style="font-size:10px;opacity:.75">+${(t.edge*100).toFixed(1)}%</span>` : ''}</span>`
+            : `<span class="act-no">No edge</span>`;
+
+      return `<tr class="${rowCls}" style="${dimStyle}">
+        <td>
+          <span class="thresh-num">${t.threshold}</span>
+          ${isNearest ? '<span class="tag tag-k">50%</span>' : ''}
+          ${illiquid  ? '<span class="tag tag-illiq">illiq</span>' : ''}
+        </td>
+        <td><span class="ask-pill">${(t.yes_ask * 100).toFixed(0)}¢</span></td>
+        <td><span class="ask-pill">${(t.no_ask * 100).toFixed(0)}¢</span></td>
+        <td>
+          <div class="prob-bar-wrap">
+            <div class="prob-bar" style="width:${mpBarW}px;background:${mpColor}"></div>
+            <span class="prob-val">${(t.market_prob * 100).toFixed(0)}%</span>
+          </div>
+        </td>
+        <td>
+          ${t.model_prob != null
+            ? `<div class="prob-bar-wrap">
+                 <div class="prob-bar" style="width:${mdBarW}px;background:var(--accent)"></div>
+                 <span class="prob-val">${(t.model_prob * 100).toFixed(0)}%</span>
+               </div>`
+            : '<span class="ev-dash">—</span>'}
+        </td>
+        <td class="${t.ev_yes > 0 ? 'ev-pos' : 'ev-neg'}">${ev(t.ev_yes)}</td>
+        <td class="${t.ev_no  > 0 ? 'ev-pos' : 'ev-neg'}">${ev(t.ev_no)}</td>
+        <td class="action-cell">${actionHtml}</td>
+      </tr>`;
+    }).join('');
+
+    matrixHtml = `
+      <div class="matrix-wrap">
+        <div class="matrix-title">Kalshi Threshold Matrix — ${r.home_team} vs ${r.away_team}</div>
+        <div class="matrix-scroll">
+          <table class="tbl">
+            <thead><tr>
+              <th>Line</th>
+              <th>Over Ask</th>
+              <th>Under Ask</th>
+              <th>Market %</th>
+              <th>Model %</th>
+              <th>EV Over</th>
+              <th>EV Under</th>
+              <th>Action</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
         </div>
-        ${keys.slice(0, 12).map((k, i) => `
-          <div class="factor-row">
-            <div class="factor-name" title="${k}">${friendlyFeature(k)}</div>
-            <div class="factor-track"><div class="factor-fill" style="width:${(vals[i]/maxVal*100).toFixed(1)}%"></div></div>
-            <div class="factor-val">${vals[i].toFixed(0)}</div>
-          </div>`).join('')}
+        <div style="margin-top:8px;font-size:10px;color:var(--muted)">
+          <span style="color:var(--yellow)">50%</span> = nearest Kalshi threshold to fair-value line ·
+          Illiquid = market outside 12–88% range ·
+          Dimmed rows = outside ±3 of implied line (model unreliable)
+        </div>
       </div>`;
   } else {
-    featHtml = `
-      <div class="detail-section">
-        <div class="detail-label">Model Factors</div>
-        <div style="font-size:12px;color:var(--muted)">Feature importance unavailable — model may still be loading.</div>
-      </div>`;
+    matrixHtml = `<div style="padding:16px 20px;font-size:12px;color:var(--muted)">No Kalshi threshold data for this game.</div>`;
   }
 
-  // Section 4: Model context + settle
-  const settleHtml = p.is_correct == null ? `
-    <div class="detail-section" style="grid-column: 1 / -1">
-      <div class="detail-label">Model Info &amp; Settle</div>
-      <div class="model-meta" style="margin-bottom:14px">
-        <div class="meta-item"><div class="meta-key">Model Version</div><div class="meta-val" style="font-size:12px">${p.model_version || '—'}</div></div>
-        <div class="meta-item"><div class="meta-key">Predicted At</div><div class="meta-val" style="font-size:12px">${timeAgo(p.predicted_at)}</div></div>
-        <div class="meta-item"><div class="meta-key">Sport</div><div class="meta-val">${(p.sport||'').toUpperCase()}</div></div>
-        <div class="meta-item"><div class="meta-key">Game Date</div><div class="meta-val" style="font-size:12px">${fmtDate(p.game_date)}</div></div>
-      </div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Enter the final score to settle this prediction and compute CLV:</div>
-      <div class="settle-form">
-        <div class="form-group">
-          <label>Actual Combined Total</label>
-          <input type="number" step="0.5" id="settle-total-${p.prediction_id}" placeholder="e.g. 221">
-        </div>
-        <div class="form-group">
-          <label>Closing Line</label>
-          <input type="number" step="0.5" id="settle-line-${p.prediction_id}" placeholder="${p.total_line || 'e.g. 228.5'}">
-        </div>
-        <button class="btn-settle" onclick="settlePred('${p.prediction_id}')">Settle</button>
-      </div>
-      <div id="settle-msg-${p.prediction_id}"></div>
-    </div>` : `
-    <div class="detail-section" style="grid-column: 1 / -1">
-      <div class="detail-label">Model Info</div>
-      <div class="model-meta">
-        <div class="meta-item"><div class="meta-key">Model Version</div><div class="meta-val" style="font-size:12px">${p.model_version || '—'}</div></div>
-        <div class="meta-item"><div class="meta-key">Result</div><div class="meta-val">${p.is_correct ? '✓ Correct' : '✗ Wrong'}</div></div>
-        <div class="meta-item"><div class="meta-key">Actual Total</div><div class="meta-val">${p.actual_total ?? '—'}</div></div>
-        <div class="meta-item"><div class="meta-key">CLV</div><div class="meta-val ${p.clv>=0?'':''}${p.clv!=null?p.clv>=0?'clv-pos':'clv-neg':''}">${p.clv!=null?(p.clv>=0?'+':'')+p.clv.toFixed(2):'—'}</div></div>
-      </div>
-    </div>`;
-
-  return `<div class="detail-grid">
-    ${gaugeHtml}
-    ${linesHtml}
-    ${featHtml}
-    ${settleHtml}
-  </div>`;
+  return callBox + matrixHtml;
 }
 
-async function settlePred(pid) {
-  const totalEl = document.getElementById('settle-total-' + pid);
-  const lineEl = document.getElementById('settle-line-' + pid);
-  const msgEl = document.getElementById('settle-msg-' + pid);
-  const total = parseFloat(totalEl.value);
-  const line = parseFloat(lineEl.value);
-  if (isNaN(total) || isNaN(line)) { msgEl.innerHTML = '<div class="settle-result err">Enter both values.</div>'; return; }
-  msgEl.innerHTML = '<div class="settle-result"><span class="spinner"></span>Settling…</div>';
-  const r = await fetch(`${API}/predictions/${pid}/settle`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
-    body: JSON.stringify({ actual_total: total, closing_line: line }),
-  });
-  if (r.ok) {
-    const data = await r.json();
-    msgEl.innerHTML = `<div class="settle-result ok">${data.message}</div>`;
-    loadPredictions();
-  } else {
-    msgEl.innerHTML = `<div class="settle-result err">Error settling — check values.</div>`;
-  }
-}
+/* ── History ── */
+async function loadHistory() {
+  const preds = await api('/predictions/recent?limit=100&sort_by=newest');
+  if (!preds || !preds.length) return;
 
-function switchTab(name) {
-  document.querySelectorAll('.tab').forEach((t, i) => {
-    t.classList.toggle('active', ['overview','predictions','alerts','models'][i] === name);
-  });
-  ['overview','predictions','alerts','models'].forEach(n => {
-    document.getElementById('tab-' + n).style.display = n === name ? '' : 'none';
-  });
-  if (name === 'predictions') loadPredictions();
-  if (name === 'alerts') loadAlerts();
-  if (name === 'models') loadModels();
-}
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayPreds = preds.filter(p => p.predicted_at && new Date(p.predicted_at) >= today);
+  if (!todayPreds.length) return;
 
-async function loadOverview() {
-  const status = await fetchJSON('/training/status');
-  const container = document.getElementById('training-status-cards');
-  if (status) {
-    container.innerHTML = Object.entries(status).map(([sport, s]) => `
-      <div class="model-card">
-        <div class="model-sport ${sport}">${sport.toUpperCase()}</div>
-        <div class="metric-row"><span class="metric-label">Last Update</span><span class="metric-val">${s.last_update_date || '—'}</span></div>
-        <div class="metric-row"><span class="metric-label">Games Added</span><span class="metric-val">${s.last_update_games_added ?? '—'}</span></div>
-        <div class="metric-row"><span class="metric-label">Model Version</span><span class="metric-val" style="font-size:11px">${s.last_retrain_version || '—'}</span></div>
-        <div class="metric-row"><span class="metric-label">Historical Games</span><span class="metric-val">${s.total_historical_games?.toLocaleString() ?? '—'}</span></div>
-      </div>`).join('');
-  }
-  const preds = await fetchJSON('/predictions/recent?limit=200');
-  if (preds) {
-    document.getElementById('stat-total').textContent = preds.length;
-    const settled = preds.filter(p => p.is_correct != null);
-    const correct = settled.filter(p => p.is_correct).length;
-    if (settled.length > 0) {
-      const acc = (correct / settled.length * 100).toFixed(1);
-      document.getElementById('stat-accuracy').textContent = acc + '%';
-      document.getElementById('stat-accuracy').className = 'card-value ' + (parseFloat(acc) >= 52 ? 'green' : 'yellow');
-      document.getElementById('stat-accuracy-sub').textContent = `${correct}/${settled.length} settled`;
+  document.getElementById('history-section').style.display = '';
+  document.getElementById('hist-cnt').textContent = todayPreds.length;
+
+  document.getElementById('hist-list').innerHTML = todayPreds.map(p => {
+    const dir = p.predicted_direction;
+    const conf = confLabel(p.confidence);
+    const isSettled = p.is_correct != null;
+    const result = !isSettled
+      ? '<span class="result-tag pending">Pending</span>'
+      : p.is_correct
+        ? '<span class="result-tag win">✓ Win</span>'
+        : '<span class="result-tag loss">✗ Loss</span>';
+
+    // Hypothetical P&L at -110 odds
+    let pnlHtml = '<span class="pnl-tag neu">—</span>';
+    if (isSettled) {
+      const gain = p.is_correct ? 90.91 : -100;
+      const cls = gain > 0 ? 'pos' : 'neg';
+      pnlHtml = `<span class="pnl-tag ${cls}">${gain > 0 ? '+' : ''}$${Math.abs(gain).toFixed(2)}</span>`;
     }
-    const clvs = preds.filter(p => p.clv != null).map(p => p.clv);
-    if (clvs.length > 0) {
-      const avg = clvs.reduce((a,b)=>a+b,0)/clvs.length;
-      document.getElementById('stat-clv').textContent = (avg>=0?'+':'') + avg.toFixed(2);
-      document.getElementById('stat-clv').className = 'card-value ' + (avg >= 0 ? 'green' : 'red');
-    }
-  }
-  const alerts = await fetchJSON('/predictions/alerts/recent?limit=200');
-  if (alerts) document.getElementById('stat-alerts').textContent = alerts.length;
-}
 
-async function loadPredictions() {
-  const sport = document.getElementById('sport-filter').value;
-  const dirF = document.getElementById('dir-filter').value;
-  const confF = document.getElementById('conf-filter').value;
-  const url = `/predictions/recent?limit=100${sport ? '&sport='+sport : ''}`;
-  const preds = await fetchJSON(url);
-  const list = document.getElementById('pred-list');
-  if (!preds || preds.length === 0) {
-    list.innerHTML = '<div class="empty">No predictions yet — run a prediction via POST /predictions</div>';
-    document.getElementById('pred-count').textContent = '0';
-    return;
-  }
-  let filtered = preds;
-  if (dirF) filtered = filtered.filter(p => p.predicted_direction === dirF);
-  if (confF === 'strong') filtered = filtered.filter(p => p.confidence >= .30);
-  else if (confF === 'moderate') filtered = filtered.filter(p => p.confidence >= .15 && p.confidence < .30);
-  else if (confF === 'weak') filtered = filtered.filter(p => p.confidence < .15);
-  _allPreds = filtered;
-  document.getElementById('pred-count').textContent = filtered.length;
-  list.innerHTML = filtered.map(renderPredCard).join('');
-}
-
-async function loadAlerts() {
-  const alerts = await fetchJSON('/predictions/alerts/recent?limit=100');
-  const tbody = document.getElementById('alert-table-body');
-  if (!alerts || alerts.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty">No high-confidence alerts yet</td></tr>';
-    return;
-  }
-  document.getElementById('alert-count').textContent = alerts.length;
-  tbody.innerHTML = alerts.map(a => `<tr>
-    <td><span class="sport-badge ${a.sport}">${(a.sport||'').toUpperCase()}</span></td>
-    <td><strong>${a.home_team} vs ${a.away_team}</strong></td>
-    <td><span class="pill ${a.direction}">${a.direction.toUpperCase()} ${a.total_line}</span></td>
-    <td><strong>${Math.round(a.confidence*100)}%</strong></td>
-    <td>${fmt(a.edge*100,1)}%</td>
-    <td>${a.game_date}</td>
-    <td><span class="status-dot ${a.fired?'dot-green':'dot-yellow'}"></span>${a.fired?'Fired':'Queued'}</td>
-  </tr>`).join('');
-}
-
-async function loadModels() {
-  const [perf, live] = await Promise.all([
-    fetchJSON('/models/performance'),
-    fetchJSON('/models/accuracy/live'),
-  ]);
-  const container = document.getElementById('model-cards');
-  if (!perf || perf.length === 0) {
-    container.innerHTML = '<div class="empty">No trained models found.</div>';
-    return;
-  }
-  const latest = {};
-  perf.forEach(m => { if (!latest[m.sport] || m.trained_at > latest[m.sport].trained_at) latest[m.sport] = m; });
-  container.innerHTML = Object.entries(latest).map(([sport, m]) => {
-    const liveAcc = live?.[sport];
-    const acc = m.accuracy != null ? (m.accuracy*100).toFixed(1)+'%' : '—';
-    const liveStr = liveAcc?.total > 0 ? `${(liveAcc.accuracy*100).toFixed(1)}% (${liveAcc.total} bets)` : 'No resolved bets';
-    return `<div class="model-card">
-      <div class="model-sport ${sport}">${sport.toUpperCase()}</div>
-      <div class="metric-row"><span class="metric-label">Version</span><span class="metric-val" style="font-size:11px">${m.version}</span></div>
-      <div class="metric-row"><span class="metric-label">Holdout Accuracy</span><span class="metric-val" style="color:${parseFloat(acc)>=52?'var(--green)':'var(--yellow)'}">${acc}</span></div>
-      <div class="metric-row"><span class="metric-label">Brier Score</span><span class="metric-val">${fmt(m.brier_score,4)}</span></div>
-      <div class="metric-row"><span class="metric-label">Log Loss</span><span class="metric-val">${fmt(m.log_loss,4)}</span></div>
-      <div class="metric-row"><span class="metric-label">Training Games</span><span class="metric-val">${m.training_games?.toLocaleString() ?? '—'}</span></div>
-      <div class="metric-row"><span class="metric-label">Features</span><span class="metric-val">${m.feature_count ?? '—'}</span></div>
-      <div class="metric-row"><span class="metric-label">Live Accuracy</span><span class="metric-val">${liveStr}</span></div>
+    return `<div class="hist-row">
+      <div>
+        <div class="hist-match">${p.home_team} vs ${p.away_team}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${(p.sport||'').toUpperCase()} · ${timeAgo(p.predicted_at)}</div>
+      </div>
+      <div style="text-align:center;font-size:13px;font-weight:700;color:#fff">${f1(p.total_line)}</div>
+      <div class="dir-tag ${dir}">${dir === 'over' ? '▲' : '▼'} ${dir.toUpperCase()} ${pct(dir === 'over' ? p.prob_over : p.prob_under)}</div>
+      <div style="text-align:center"><span class="conf-label ${conf.cls}">${conf.label}</span></div>
+      <div style="text-align:right">${result}</div>
+      <div style="text-align:right">${pnlHtml}</div>
     </div>`;
   }).join('');
 }
 
-async function loadAll() {
-  document.getElementById('last-updated').textContent = 'Refreshing…';
-  await loadOverview();
-  document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+/* ── Auto-settle ── */
+async function autoSettle() {
+  const btn = document.getElementById('settle-btn');
+  btn.textContent = 'Settling…';
+  btn.disabled = true;
+  const res = await api('/predictions/settle/auto', { method: 'POST' });
+  btn.disabled = false;
+  if (res) {
+    btn.textContent = res.error
+      ? 'DB offline'
+      : `Settled ${res.settled}`;
+    if (res.settled > 0) {
+      loadHistory();
+      loadPnlBanner();
+      loadModelPills();
+    }
+  } else {
+    btn.textContent = 'Failed';
+  }
+  setTimeout(() => { btn.textContent = 'Auto-Settle'; }, 3000);
 }
 
-loadAll();
-setInterval(loadAll, 60000);
+/* ── Init ── */
+loadModelPills();
 </script>
 </body>
 </html>

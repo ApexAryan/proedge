@@ -33,6 +33,16 @@ _HAS_GAMETIME = {"mlb", "nfl"}
 
 
 @dataclass
+class KalshiThreshold:
+    threshold: float
+    yes_bid: float    # best bid to buy Over contract
+    yes_ask: float    # best ask to buy Over contract (cost to bet Over)
+    no_bid: float     # best bid to buy Under contract
+    no_ask: float     # best ask to buy Under contract (cost to bet Under)
+    implied_prob: float  # yes midpoint = market-implied P(over threshold)
+
+
+@dataclass
 class KalshiGameTotal:
     sport: str
     event_ticker: str       # e.g. KXNBATOTAL-26MAY11OKCLAL
@@ -43,6 +53,7 @@ class KalshiGameTotal:
     nearest_threshold: int  # nearest actual market threshold
     nearest_prob: float     # yes mid-price at nearest_threshold
     thresholds: list[tuple[int, float]] = field(default_factory=list)  # (thresh, yes_mid) sorted asc
+    threshold_data: list[KalshiThreshold] = field(default_factory=list)  # full price data per threshold
 
 
 def fetch_totals(sport: str, timeout: float = 10.0) -> list[KalshiGameTotal]:
@@ -114,6 +125,9 @@ def _parse_markets(
 ) -> list[KalshiGameTotal]:
     events: dict[str, list[tuple[int, float]]] = {}
 
+    # event_ticker → list of (threshold, yes_bid, yes_ask, no_bid, no_ask)
+    events: dict[str, list[tuple[int, float, float, float, float]]] = {}
+
     for m in markets:
         ticker: str = m.get("ticker", "")
         parts = ticker.rsplit("-", 1)
@@ -123,20 +137,44 @@ def _parse_markets(
         try:
             threshold = int(thresh_str)
         except ValueError:
-            continue  # skip fractional thresholds if any
+            # Try float threshold (e.g. half-point lines stored as int after strip)
+            try:
+                threshold = int(float(thresh_str))
+            except ValueError:
+                continue
 
         yes_bid = float(m.get("yes_bid_dollars") or 0)
         yes_ask = float(m.get("yes_ask_dollars") or 0)
-        yes_mid = (yes_bid + yes_ask) / 2
+        no_bid = float(m.get("no_bid_dollars") or 0)
+        no_ask = float(m.get("no_ask_dollars") or 0)
 
-        events.setdefault(event_ticker, []).append((threshold, yes_mid))
+        events.setdefault(event_ticker, []).append((threshold, yes_bid, yes_ask, no_bid, no_ask))
 
     results: list[KalshiGameTotal] = []
-    for event_ticker, pts in events.items():
-        pts_sorted = sorted(pts)  # ascending threshold
+    for event_ticker, raw_pts in events.items():
+        raw_sorted = sorted(raw_pts, key=lambda x: x[0])  # ascending threshold
+
+        # Build KalshiThreshold list
+        td_list: list[KalshiThreshold] = []
+        pts_sorted: list[tuple[int, float]] = []
+        for thresh, yb, ya, nb, na in raw_sorted:
+            yes_mid = round((yb + ya) / 2, 4)
+            # Kalshi ticker integer N means "Over N" (strictly), which equals
+            # conventional sportsbook notation of N + 0.5 (no tie possible).
+            display_thresh = float(thresh) + 0.5
+            td_list.append(KalshiThreshold(
+                threshold=display_thresh,
+                yes_bid=round(yb, 4),
+                yes_ask=round(ya, 4),
+                no_bid=round(nb, 4),
+                no_ask=round(na, 4),
+                implied_prob=yes_mid,
+            ))
+            pts_sorted.append((thresh, yes_mid))
+
         suffix = event_ticker[len(series) + 1:]  # strip "KXNBATOTAL-"
         game_date, team1, team2 = _parse_event_suffix(sport, suffix)
-        implied = _interpolate_50pct(pts_sorted)
+        implied = round(_interpolate_50pct(pts_sorted) + 0.5, 2)  # same +0.5 adjustment
         nearest = min(pts_sorted, key=lambda x: abs(x[1] - 0.5))
 
         results.append(
@@ -150,6 +188,7 @@ def _parse_markets(
                 nearest_threshold=nearest[0],
                 nearest_prob=round(nearest[1], 4),
                 thresholds=pts_sorted,
+                threshold_data=td_list,
             )
         )
 
@@ -174,13 +213,20 @@ def _parse_event_suffix(sport: str, suffix: str) -> tuple[str, str, str]:
     return game_date, team1, team2
 
 
+# Teams whose Kalshi ticker abbreviation is 2 letters (not the standard 3).
+# Affects how 5-char concatenated codes are split (2+3 vs 3+2).
+_TWO_LETTER_CODES = {"SF", "AZ", "TB", "KC", "SD", "NY", "LA"}
+
+
 def _split_teams(codes: str) -> tuple[str, str]:
     """Split concatenated team codes. Most are 3+3 chars; some are 2+3 or 3+2."""
     n = len(codes)
     if n == 6:
         return codes[:3], codes[3:]
     if n == 5:
-        # Try 3+2 first (more common in MLB)
+        # If the first 2 chars are a known 2-letter code, split 2+3 (e.g. SF+LAD, AZ+TEX, TB+TOR)
+        if codes[:2].upper() in _TWO_LETTER_CODES:
+            return codes[:2], codes[2:]
         return codes[:3], codes[3:]
     if n == 4:
         return codes[:2], codes[2:]

@@ -8,12 +8,12 @@ from datetime import datetime, timedelta, timezone
 
 from pathlib import Path
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
-from proedge.api.middleware.auth import APIKeyMiddleware
+from proedge.api.middleware.auth import API_KEY_COOKIE, APIKeyMiddleware
 from proedge.api.routers import backtest, health, lines, performance, predictions, training
 from proedge.config import get_settings
 from proedge.monitoring.metrics import REQUEST_COUNT, REQUEST_LATENCY
@@ -135,12 +135,55 @@ async def metrics_middleware(request: Request, call_next):
     return response
 
 
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_WEB_DIST = _REPO_ROOT / "web" / "dist"
+_WEB_INDEX = _WEB_DIST / "index.html"
 _DASHBOARD_FILE = Path(__file__).parent / "static" / "dashboard.html"
+
+
+def _with_api_cookie(response: Response) -> Response:
+    if settings.api_key:
+        response.set_cookie(
+            key=API_KEY_COOKIE,
+            value=settings.api_key,
+            httponly=True,
+            samesite="lax",
+            path="/",
+            max_age=60 * 60 * 24 * 7,
+        )
+    return response
 
 
 @app.get("/dashboard", include_in_schema=False)
 async def dashboard():
-    return FileResponse(_DASHBOARD_FILE)
+    target = _WEB_INDEX if _WEB_INDEX.is_file() else _DASHBOARD_FILE
+    response = _with_api_cookie(FileResponse(target))
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+def _dist_file(*parts: str) -> Path | None:
+    root = _WEB_DIST.resolve()
+    file = (root.joinpath(*parts)).resolve()
+    if not file.is_file() or not file.is_relative_to(root):
+        return None
+    return file
+
+
+@app.get("/assets/{asset_path:path}", include_in_schema=False)
+async def spa_assets(asset_path: str):
+    file = _dist_file("assets", asset_path)
+    if file is None:
+        raise HTTPException(status_code=404)
+    return FileResponse(file)
+
+
+@app.get("/favicon.svg", include_in_schema=False)
+async def spa_favicon():
+    file = _dist_file("favicon.svg")
+    if file is None:
+        raise HTTPException(status_code=404)
+    return FileResponse(file)
 
 
 @app.get("/", include_in_schema=False)

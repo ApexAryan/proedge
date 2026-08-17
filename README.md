@@ -108,7 +108,37 @@ curl http://localhost:8001/health
 make install       # pip install -e ".[dev]"
 make env-setup     # copy .env.example to .env
 make migrate       # run database migrations
-make dev           # start uvicorn with hot reload on port 8000
+make dev           # start uvicorn with hot reload on port 8010
+make web           # Vite dev UI on :5173 (proxies API on :8010)
+```
+
+Dashboard: http://localhost:8010/dashboard
+
+### Running alongside other local apps
+
+These three stacks are pinned to different ports so they can run together:
+
+| App | API | UI |
+|---|---|---|
+| KalshiEdge | http://localhost:8040* | same |
+| ProEdge | http://localhost:8010 | http://localhost:8010/dashboard |
+| EDGE NBA | http://localhost:8600 | same (or Vite dev on :5174) |
+
+\*KalshiEdge reads `API_PORT` from its `.env` (yours is **8040**, not 8000).
+
+Use each project's virtualenv — bare `python` / `uvicorn` on your PATH will fail.
+
+```bash
+cd ~/Desktop/kalshiedge/files && ./dev.sh
+cd ~/Desktop/proedge && make dev
+cd ~/Desktop/athlete\ database && make dev
+```
+
+Or start whatever is not already running:
+
+```bash
+cd ~/Desktop/proedge && make start-all
+make status   # :8000 :8010 :8600
 ```
 
 ```bash

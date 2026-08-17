@@ -496,6 +496,24 @@ def test_training_retrain_invalid_sport():
     assert resp.status_code == 422
 
 
+def test_dashboard_serves_html():
+    resp = client.get("/dashboard")
+    assert resp.status_code == 200
+    assert "text/html" in resp.headers.get("content-type", "")
+
+
+def test_spa_assets_when_built():
+    from pathlib import Path
+
+    dist_assets = Path(__file__).resolve().parents[1] / "web" / "dist" / "assets"
+    files = list(dist_assets.glob("index-*.js")) if dist_assets.is_dir() else []
+    if not files:
+        assert client.get("/assets/missing.js").status_code == 404
+        return
+    resp = client.get(f"/assets/{files[0].name}")
+    assert resp.status_code == 200
+
+
 # ---------------------------------------------------------------------------
 # GET /lines/prizepicks/{sport}
 # ---------------------------------------------------------------------------

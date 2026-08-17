@@ -19,6 +19,7 @@ htmlcov/
 .env
 .env.*
 !.env.example
+!web/.env.example
 
 # Data & models (large binaries — not tracked in git)
 data/
@@ -45,3 +46,7 @@ alembic/versions/__pycache__/
 
 # Claude
 .claude/
+
+# Frontend
+web/node_modules/
+web/dist/

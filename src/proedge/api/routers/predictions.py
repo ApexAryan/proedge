@@ -11,7 +11,17 @@ import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from proedge.api.schemas import LineComparisonResponse, PredictionRequest, PredictionResponse, SettleRequest, SettleResponse
+from proedge.api.schemas import (
+    KalshiThresholdData,
+    LineComparisonResponse,
+    MarketScanGameResult,
+    MarketScanRequest,
+    MarketScanResponse,
+    PredictionRequest,
+    PredictionResponse,
+    SettleRequest,
+    SettleResponse,
+)
 from proedge.db.repositories import AlertRepository, GameRepository, PredictionRepository
 from proedge.db.session import get_db
 from proedge.monitoring.alerts import get_alert_manager
@@ -28,6 +38,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/predictions", tags=["predictions"])
 _registry = ModelRegistry()
 _model_cache: dict[str, object] = {}
+
+# In-memory line movement tracking: event_ticker → (first_implied_line, first_seen_at_iso)
+# Persists for the lifetime of the server process; cleared on restart.
+_line_history: dict[str, tuple[float, str]] = {}
 
 
 def _get_model(sport: str):
@@ -224,15 +238,556 @@ async def create_prediction(req: PredictionRequest, db: AsyncSession = Depends(g
     )
 
 
+@router.post("/scan", response_model=MarketScanResponse, status_code=status.HTTP_200_OK)
+async def scan_markets(req: MarketScanRequest, db: AsyncSession = Depends(get_db)):
+    """Fetch all live Kalshi markets, run model on each game, return sorted by confidence."""
+    import asyncio as _asyncio
+    from datetime import datetime, timezone
+
+    from proedge.pipeline.ingestion import kalshi_fetcher
+
+    game_repo = GameRepository(db)
+    pred_repo = PredictionRepository(db)
+    all_results: list[MarketScanGameResult] = []
+    active_sports: list[str] = []
+
+    for sport in req.sports:
+        model = _get_model(sport)
+        if model is None:
+            continue
+
+        meta = _registry.load_meta(sport)
+        model_version = meta.get("version", "unknown")
+        feature_names: list[str] = meta.get("feature_names", [])
+        feature_medians: dict[str, float] = meta.get("feature_medians", {})
+
+        try:
+            kalshi_games = kalshi_fetcher.fetch_totals(sport)
+        except Exception as exc:
+            logger.warning("scan: kalshi fetch failed for %s: %s", sport, exc)
+            continue
+
+        if not kalshi_games:
+            logger.info("scan: no Kalshi markets for %s", sport)
+            continue
+
+        active_sports.append(sport)
+
+        # Fetch injuries once per sport — keyed by team abbreviation
+        injury_counts: dict[str, int] = {}
+        try:
+            from proedge.pipeline.ingestion.injuries import InjuryFetcher
+            inj_reports = InjuryFetcher(timeout=8.0).fetch_all(sport)
+            injury_counts = {team: r.key_players_out for team, r in inj_reports.items()}
+            logger.info("scan: %s injury data loaded (%d teams)", sport.upper(), len(injury_counts))
+        except Exception as exc:
+            logger.warning("scan: injury fetch failed for %s: %s", sport, exc)
+
+        # NBA: fetch live rolling stats (cached 4h) to replace training medians.
+        # Only fetch the teams actually playing today — avoids rate limits.
+        nba_live_cache: dict[str, dict[str, float]] = {}
+        if sport == "nba" and kalshi_games:
+            try:
+                from proedge.pipeline.ingestion import nba_live_stats
+                teams_needed = list({
+                    t.upper()
+                    for kg in kalshi_games
+                    for t in [kg.team1, kg.team2]
+                })
+                nba_live_cache = await _asyncio.get_event_loop().run_in_executor(
+                    None, nba_live_stats.get_teams, teams_needed
+                )
+                logger.info(
+                    "scan: NBA live stats loaded for %d/%d teams",
+                    sum(1 for v in nba_live_cache.values() if v),
+                    len(teams_needed),
+                )
+            except Exception as exc:
+                logger.warning("scan: NBA live stats fetch failed: %s", exc)
+
+        # MLB: fetch live rolling stats (cached 4h) — same pattern as NBA.
+        mlb_live_cache: dict[str, dict[str, float]] = {}
+        if sport == "mlb" and kalshi_games:
+            try:
+                from proedge.pipeline.ingestion import mlb_live_stats
+                teams_needed = list({
+                    t.upper()
+                    for kg in kalshi_games
+                    for t in [kg.team1, kg.team2]
+                })
+                mlb_live_cache = await _asyncio.get_event_loop().run_in_executor(
+                    None, mlb_live_stats.get_teams, teams_needed
+                )
+                logger.info(
+                    "scan: MLB live stats loaded for %d/%d teams",
+                    sum(1 for v in mlb_live_cache.values() if v),
+                    len(teams_needed),
+                )
+            except Exception as exc:
+                logger.warning("scan: MLB live stats fetch failed: %s", exc)
+
+        _month = {"JAN":1,"FEB":2,"MAR":3,"APR":4,"MAY":5,"JUN":6,
+                  "JUL":7,"AUG":8,"SEP":9,"OCT":10,"NOV":11,"DEC":12}
+
+        for kg in kalshi_games:
+            home_team = kg.team1.upper()
+            away_team = kg.team2.upper()
+            implied_line = kg.implied_line
+
+            # Track line movement from first-seen implied line this session
+            _prev = _line_history.get(kg.event_ticker)
+            if _prev is not None:
+                _first_line, _ = _prev
+                line_movement: float | None = round(implied_line - _first_line, 2)
+            else:
+                line_movement = None
+                _line_history[kg.event_ticker] = (implied_line, datetime.now(timezone.utc).isoformat())
+
+            # Parse game date from ticker
+            try:
+                gd = kg.game_date  # "YYMONDD"
+                yr = 2000 + int(gd[:2])
+                mon = _month.get(gd[2:5].upper(), 1)
+                day = int(gd[5:7])
+                game_dt = datetime(yr, mon, day, 19, 0, tzinfo=timezone.utc)
+            except Exception:
+                game_dt = datetime.now(timezone.utc)
+
+            # Build feature row with contextual enrichment beyond just the line
+            row = {f: feature_medians.get(f, 0.0) for f in feature_names}
+            row["total_line"] = implied_line
+            row["home_advantage"] = 1.0
+
+            # NBA/MLB-specific context
+            if sport == "nba":
+                row["is_dome"] = 1.0
+                row["dome_flag"] = 1.0
+                # NBA April–June = playoffs (lower pace, more defense → under lean)
+                if game_dt.month in (4, 5, 6):
+                    row["is_playoff"] = 1.0
+            elif sport == "mlb":
+                row["is_dome"] = 0.0
+                row["dome_flag"] = 0.0
+
+            # Injury enrichment — reduces scoring on the affected side
+            home_out = injury_counts.get(home_team, 0)
+            away_out = injury_counts.get(away_team, 0)
+            row["home_key_players_out"] = float(home_out)
+            row["away_key_players_out"] = float(away_out)
+            row["injury_pts_impact"] = (home_out - away_out) * -3.0
+
+            # NBA live rolling stats — overwrite medians with real team context
+            if nba_live_cache:
+                from proedge.pipeline.ingestion.nba_live_stats import inject_team_features
+                inject_team_features(row, home_team, "home_", nba_live_cache)
+                inject_team_features(row, away_team, "away_", nba_live_cache)
+
+            # MLB live rolling stats — same injection pattern
+            if mlb_live_cache:
+                from proedge.pipeline.ingestion.mlb_live_stats import inject_team_features as mlb_inject
+                mlb_inject(row, home_team, "home_", mlb_live_cache)
+                mlb_inject(row, away_team, "away_", mlb_live_cache)
+
+            X = pd.DataFrame([row])
+
+            try:
+                intervals = model.predict_with_intervals(X)
+                p_data = intervals[0]
+                probs_raw = model.predict_proba(X)
+                model_anchor_prob = float(probs_raw[0])
+            except Exception as exc:
+                logger.warning("scan: model failed for %s %s/%s: %s", sport, home_team, away_team, exc)
+                continue
+
+            direction = "over" if p_data["prob_over"] >= 0.5 else "under"
+
+            best_threshold: float | None = None
+            best_bet: str | None = None
+            best_edge: float | None = None
+            threshold_data: list[KalshiThresholdData] = []
+
+            # Score model at each threshold's line value individually so model_prob
+            # reflects genuine sensitivity to the total (e.g. 4.5 vs 8.5 in MLB),
+            # rather than a uniform log-odds shift that pushes all thresholds the same way.
+            if kg.threshold_data:
+                thresh_rows = []
+                for td in kg.threshold_data:
+                    thresh_row = dict(row)
+                    thresh_row["total_line"] = td.threshold
+                    thresh_rows.append(thresh_row)
+                try:
+                    X_thresh = pd.DataFrame(thresh_rows)
+                    thresh_probs = [float(p) for p in model.predict_proba(X_thresh)]
+                except Exception as exc:
+                    logger.warning("scan: per-threshold scoring failed for %s: %s", kg.event_ticker, exc)
+                    thresh_probs = [model_anchor_prob] * len(kg.threshold_data)
+            else:
+                thresh_probs = []
+
+            for td, model_prob in zip(kg.threshold_data, thresh_probs):
+                ev_yes = round(model_prob - td.yes_ask, 4)
+                ev_no = round((1 - model_prob) - td.no_ask, 4)
+
+                # Bet direction must agree with model's directional prediction:
+                # only recommend OVER when model itself thinks >50% likely, and
+                # UNDER when model thinks <50% likely. This prevents confusing cases
+                # like "model says 82% OVER → best bet UNDER" that occur when a tiny
+                # market/model gap produces technically-positive-EV on the wrong side.
+                #
+                # Also restrict best_bet to thresholds within ±3 of the implied line.
+                # The model's total_line feature is trained on typical game lines; at
+                # extreme thresholds (e.g. MLB 13.5 when line is 8.9) the per-threshold
+                # probability is unreliable and can produce spuriously large EV values.
+                tradeable = 0.12 < td.implied_prob < 0.88
+                near_implied = abs(td.threshold - implied_line) <= 3.0
+                bet: str | None = None
+                bet_edge: float = 0.0
+                if tradeable and near_implied:
+                    if model_prob > 0.5 and ev_yes > 0:
+                        bet = "over"
+                        bet_edge = ev_yes
+                    elif model_prob < 0.5 and ev_no > 0:
+                        bet = "under"
+                        bet_edge = ev_no
+
+                if bet and (best_edge is None or bet_edge > best_edge):
+                    best_edge = round(bet_edge, 4)
+                    best_threshold = td.threshold
+                    best_bet = bet
+
+                threshold_data.append(KalshiThresholdData(
+                    threshold=td.threshold,
+                    yes_ask=td.yes_ask,
+                    no_ask=td.no_ask,
+                    market_prob=td.implied_prob,
+                    model_prob=round(model_prob, 4),
+                    ev_yes=ev_yes,
+                    ev_no=ev_no,
+                    best_bet=bet if bet else None,
+                    edge=round(bet_edge, 4) if bet else None,
+                ))
+
+            # Persist game + prediction to DB (best-effort; scan still returns if DB is down)
+            game = None
+            db_pred = None
+            try:
+                existing = await game_repo.get_by_teams_date(sport, home_team, away_team, game_dt)
+                if existing is None:
+                    existing = await game_repo.get_by_teams_date(sport, away_team, home_team, game_dt)
+                    if existing:
+                        home_team, away_team = away_team, home_team
+                if existing is None:
+                    existing = await game_repo.get_by_external_id(kg.event_ticker)
+
+                if existing is None:
+                    game = await game_repo.create(
+                        sport=sport,
+                        home_team=home_team,
+                        away_team=away_team,
+                        game_date=game_dt,
+                        total_line=implied_line,
+                        status="scheduled",
+                        external_id=kg.event_ticker,
+                    )
+                else:
+                    game = existing
+                    updates: dict = {}
+                    if game.home_team != home_team:
+                        updates["home_team"] = home_team
+                    if game.away_team != away_team:
+                        updates["away_team"] = away_team
+                    if abs((game.total_line or 0) - implied_line) > 0.05:
+                        updates["total_line"] = implied_line
+                    if updates:
+                        await game_repo.update_fields(game.id, **updates)
+
+                existing_pred = await pred_repo.get_latest_for_game(game.id)
+                _can_reuse = (
+                    existing_pred is not None
+                    and existing_pred.model_version == model_version
+                    and not (sport == "nba" and nba_live_cache)
+                    and not (sport == "mlb" and mlb_live_cache)
+                )
+                if _can_reuse:
+                    db_pred = existing_pred
+                else:
+                    db_pred = await pred_repo.create(
+                        game_id=game.id,
+                        model_version=model_version,
+                        sport=sport,
+                        prob_over=p_data["prob_over"],
+                        prob_under=p_data["prob_under"],
+                        ci_lower=p_data["ci_lower"],
+                        ci_upper=p_data["ci_upper"],
+                        predicted_direction=direction,
+                        confidence=p_data["confidence"],
+                        features_snapshot=None,
+                        latency_ms=0.0,
+                    )
+            except Exception as exc:
+                logger.warning("scan: DB persist failed for %s %s: %s", sport, kg.event_ticker, exc)
+
+            live_stats = False
+            if sport == "nba":
+                live_stats = bool(nba_live_cache.get(home_team) or nba_live_cache.get(away_team))
+            elif sport == "mlb":
+                live_stats = bool(mlb_live_cache.get(home_team) or mlb_live_cache.get(away_team))
+
+            all_results.append(MarketScanGameResult(
+                game_id=game.id if game else None,
+                prediction_id=db_pred.id if db_pred else None,
+                sport=sport,
+                home_team=home_team,
+                away_team=away_team,
+                kalshi_implied_line=implied_line,
+                model_prob_over=p_data["prob_over"],
+                model_prob_under=p_data["prob_under"],
+                predicted_direction=direction,
+                confidence=p_data["confidence"],
+                best_threshold=best_threshold,
+                best_bet=best_bet,
+                best_edge=best_edge,
+                thresholds=threshold_data,
+                line_movement=line_movement,
+                ci_lower=p_data.get("ci_lower"),
+                ci_upper=p_data.get("ci_upper"),
+                home_key_players_out=home_out,
+                away_key_players_out=away_out,
+                live_stats=live_stats,
+            ))
+
+    all_results.sort(key=lambda r: r.confidence, reverse=True)
+
+    return MarketScanResponse(
+        scanned_at=datetime.now(timezone.utc),
+        sports=active_sports,
+        total_games=len(all_results),
+        results=all_results,
+    )
+
+
+@router.get("/performance", response_model=dict, status_code=status.HTTP_200_OK)
+async def get_performance(db: AsyncSession = Depends(get_db)):
+    """Hit rate and hypothetical P&L for settled predictions, per sport.
+
+    P&L assumes $100/bet at -110 odds (win $90.91, lose $100).
+    Predictions are deduplicated per game (latest settled prediction wins).
+    """
+    from sqlalchemy import func as _func, select as _sel
+    from proedge.db.models import Prediction
+
+    results = {}
+    try:
+        for sport in ["nba", "mlb", "nfl"]:
+            ranked = (
+                _sel(
+                    Prediction.is_correct,
+                    _func.row_number()
+                    .over(
+                        partition_by=Prediction.game_id,
+                        order_by=Prediction.predicted_at.desc(),
+                    )
+                    .label("rn"),
+                )
+                .where(
+                    Prediction.sport == sport,
+                    Prediction.is_correct.isnot(None),
+                )
+                .subquery()
+            )
+            total_r = await db.execute(
+                _sel(_func.count()).select_from(ranked).where(ranked.c.rn == 1)
+            )
+            total = total_r.scalar() or 0
+
+            wins_r = await db.execute(
+                _sel(_func.count())
+                .select_from(ranked)
+                .where(ranked.c.rn == 1, ranked.c.is_correct.is_(True))
+            )
+            wins = wins_r.scalar() or 0
+            losses = total - wins
+            pnl = round(wins * 90.91 - losses * 100.0, 2) if total else None
+            results[sport] = {
+                "total_settled": total,
+                "wins": wins,
+                "losses": losses,
+                "hit_rate": round(wins / total, 4) if total else None,
+                "pnl": pnl,
+            }
+
+        logged_r = await db.execute(_sel(_func.count(Prediction.id)))
+        pending_r = await db.execute(
+            _sel(_func.count(Prediction.id)).where(Prediction.is_correct.is_(None))
+        )
+        logged = logged_r.scalar() or 0
+        pending = pending_r.scalar() or 0
+        wins = sum(results[s]["wins"] for s in ["nba", "mlb", "nfl"])
+        losses = sum(results[s]["losses"] for s in ["nba", "mlb", "nfl"])
+        settled = wins + losses
+        pnl = round(wins * 90.91 - losses * 100.0, 2) if settled else None
+        roi = round((wins * 0.9091 - losses) / settled, 4) if settled else None
+        results["overall"] = {
+            "logged": logged,
+            "pending": pending,
+            "total_settled": settled,
+            "wins": wins,
+            "losses": losses,
+            "hit_rate": round(wins / settled, 4) if settled else None,
+            "roi": roi,
+            "pnl": pnl,
+        }
+    except Exception as exc:
+        logger.warning("performance: DB query failed: %s", exc)
+        empty = {"total_settled": 0, "wins": 0, "losses": 0, "hit_rate": None, "pnl": None}
+        for sport in ["nba", "mlb", "nfl"]:
+            results[sport] = dict(empty)
+        results["overall"] = {
+            **empty,
+            "logged": 0,
+            "pending": 0,
+            "roi": None,
+        }
+
+    return results
+
+
+@router.post("/settle/auto", response_model=dict, status_code=status.HTTP_200_OK)
+async def auto_settle(db: AsyncSession = Depends(get_db)):
+    """Fetch final scores from ESPN and settle any pending predictions.
+
+    Checks today + yesterday for each active sport. Idempotent: skips
+    predictions that are already settled (is_correct not null).
+    """
+    import asyncio as _asyncio
+    from datetime import date, timedelta
+    from proedge.pipeline.ingestion import score_fetcher
+
+    game_repo = GameRepository(db)
+    pred_repo = PredictionRepository(db)
+
+    settled = 0
+    already_settled = 0
+    no_score_match = 0
+
+    today = date.today()
+
+    try:
+        for sport in ["nba", "mlb", "nfl"]:
+            for delta in range(2):  # today and yesterday
+                check_date = today - timedelta(days=delta)
+                scores = await _asyncio.get_event_loop().run_in_executor(
+                    None, score_fetcher.fetch_scores, sport, check_date
+                )
+                if not scores:
+                    continue
+
+                from datetime import datetime, timezone
+                day_start = datetime(check_date.year, check_date.month, check_date.day, tzinfo=timezone.utc)
+                day_end = day_start + timedelta(days=1)
+
+                games = await game_repo.list_by_sport_date(sport, day_start, day_end)
+                for game in games:
+                    score = score_fetcher.match_score(game.home_team, game.away_team, scores)
+                    if not score:
+                        no_score_match += 1
+                        continue
+
+                    total_line = game.total_line
+                    if not total_line:
+                        continue
+
+                    preds = await pred_repo.get_by_game(game.id)
+                    for pred in preds:
+                        if pred.is_correct is not None:
+                            already_settled += 1
+                            continue
+                        await pred_repo.settle(
+                            prediction_id=pred.id,
+                            actual_total=float(score["total"]),
+                            closing_line=total_line,
+                            predicted_direction=pred.predicted_direction,
+                            bet_line=total_line,
+                        )
+                        settled += 1
+
+                    await game_repo.update_fields(
+                        game.id,
+                        home_score=score["home_score"],
+                        away_score=score["away_score"],
+                        result_over=score["total"] > total_line,
+                        status="final",
+                    )
+
+    except Exception as exc:
+        logger.warning("auto_settle: failed: %s", exc)
+        return {"error": str(exc), "settled": settled}
+
+    return {
+        "settled": settled,
+        "already_settled": already_settled,
+        "no_score_match": no_score_match,
+    }
+
+
+@router.delete("/purge", response_model=dict)
+async def purge_old_predictions(days_old: int = 7, db: AsyncSession = Depends(get_db)):
+    """Delete predictions (and orphaned games) older than `days_old` days."""
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy import delete as _delete, select as _select
+    from proedge.db.models import Game, Prediction
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days_old)
+    stale = (await db.execute(
+        _select(Prediction.id, Prediction.game_id).where(Prediction.predicted_at < cutoff)
+    )).all()
+    if not stale:
+        return {"deleted_predictions": 0, "deleted_games": 0}
+
+    pred_ids = [r[0] for r in stale]
+    candidate_game_ids = list({r[1] for r in stale})
+    await db.execute(_delete(Prediction).where(Prediction.id.in_(pred_ids)))
+
+    surviving = (await db.execute(
+        _select(Prediction.game_id).where(Prediction.game_id.in_(candidate_game_ids))
+    )).scalars().all()
+    orphaned = [gid for gid in candidate_game_ids if gid not in set(surviving)]
+    deleted_games = 0
+    if orphaned:
+        res = await db.execute(_delete(Game).where(Game.id.in_(orphaned)))
+        deleted_games = res.rowcount
+
+    return {"deleted_predictions": len(pred_ids), "deleted_games": deleted_games}
+
+
 @router.get("/recent", response_model=list[dict])
 async def get_recent_predictions(
     sport: str | None = None,
     limit: int = 50,
+    sort_by: str = "newest",
     db: AsyncSession = Depends(get_db),
 ):
-    """Recent predictions with full game context, ordered newest-first."""
+    """Recent predictions with full game context. sort_by: newest | strongest | weakest"""
     pred_repo = PredictionRepository(db)
-    rows = await pred_repo.get_recent_with_games(sport=sport, limit=limit)
+    # Fetch more than requested so dedup doesn't starve the result set
+    rows = await pred_repo.get_recent_with_games(sport=sport, limit=limit * 5)
+
+    # One prediction per game — DB returns newest-first so first hit per game_id is latest
+    seen_games: set = set()
+    deduped = []
+    for row in rows:
+        gid = row[1].id
+        if gid not in seen_games:
+            seen_games.add(gid)
+            deduped.append(row)
+    rows = deduped
+
+    if sort_by == "strongest":
+        rows = sorted(rows, key=lambda row: row[0].confidence or 0, reverse=True)
+    elif sort_by == "weakest":
+        rows = sorted(rows, key=lambda row: row[0].confidence or 0)
+
+    rows = rows[:limit]
     return [
         {
             "prediction_id": str(p.id),
