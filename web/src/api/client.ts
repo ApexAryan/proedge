@@ -25,8 +25,6 @@ export class ApiError extends Error {
 async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const headers = new Headers(opts.headers)
   if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
-  const key = import.meta.env.VITE_API_KEY
-  if (key) headers.set('X-API-Key', key)
 
   let res: Response
   try {

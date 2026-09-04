@@ -37,11 +37,6 @@ status:
 	done
 
 web:
-	@if [ -f .env ] && [ ! -f web/.env.local ]; then \
-		k=$$(grep -E '^API_KEY=' .env | cut -d= -f2-); \
-		printf 'VITE_API_KEY=%s\n' "$$k" > web/.env.local; \
-		echo "Wrote web/.env.local from API_KEY"; \
-	fi
 	cd web && npm install && npm run dev
 
 web-build:

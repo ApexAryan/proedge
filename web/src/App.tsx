@@ -32,7 +32,7 @@ let booted = false
 function errMessage(e: unknown): string {
   if (e instanceof ApiError) {
     if (e.status === 0) return `Scan failed — ${e.body}. Is the API running on :8010?`
-    if (e.status === 401) return 'Unauthorized — set VITE_API_KEY in web/.env.local to match API_KEY.'
+    if (e.status === 401) return 'Unauthorized — check the server-side API_KEY configuration.'
     return e.body
   }
   return e instanceof Error ? e.message : 'Request failed'
