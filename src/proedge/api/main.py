@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from proedge.api.middleware.auth import API_KEY_COOKIE, APIKeyMiddleware
-from proedge.api.routers import backtest, health, lines, performance, predictions, training
+from proedge.api.routers import backtest, health, lines, performance, portfolio_demo, predictions, training
 from proedge.config import get_settings
 from proedge.monitoring.metrics import REQUEST_COUNT, REQUEST_LATENCY
 
@@ -117,6 +117,12 @@ app.add_middleware(
 )
 app.add_middleware(APIKeyMiddleware, api_key=settings.api_key)
 
+@app.middleware("http")
+async def portfolio_demo_boundary(request: Request, call_next):
+    if settings.portfolio_demo_mode and not request.url.path.startswith("/demo/") and request.url.path != "/health":
+        return Response(content='{"detail":"Not found"}', status_code=404, media_type="application/json")
+    return await call_next(request)
+
 
 @app.middleware("http")
 async def metrics_middleware(request: Request, call_next):
@@ -207,3 +213,4 @@ app.include_router(performance.router)
 app.include_router(lines.router)
 app.include_router(training.router)
 app.include_router(backtest.router)
+app.include_router(portfolio_demo.router)

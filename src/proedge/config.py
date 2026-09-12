@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8010
     api_workers: int = 4
+    portfolio_demo_mode: bool = False
     secret_key: str = "dev-secret-change-in-production"
 
     # Sports Data
