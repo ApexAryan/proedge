@@ -7,6 +7,8 @@ WORKDIR /app
 
 COPY pyproject.toml .
 COPY src/ src/
+COPY models/ models/
+COPY data/ data/
 RUN pip install --no-cache-dir -e .
 
 COPY alembic/ alembic/
@@ -14,4 +16,4 @@ COPY alembic.ini .
 
 ENV PYTHONPATH=/app/src
 
-CMD ["uvicorn", "proedge.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn proedge.api.main:app --host 0.0.0.0 --port ${PORT:-10000}"]

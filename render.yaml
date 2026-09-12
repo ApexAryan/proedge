@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: proedge-demo-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORTFOLIO_DEMO_MODE
+        value: "true"
+      - key: PORTFOLIO_DEMO_TOKEN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_SYNC
+        sync: false
