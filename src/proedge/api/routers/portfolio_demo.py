@@ -34,7 +34,9 @@ async def _refresh() -> dict[str, Any]:
 @router.get("/bootstrap")
 async def bootstrap(x_demo_token: str = Header(""), x_demo_visitor: str = Header("")) -> dict[str, Any]:
     _auth(x_demo_token, x_demo_visitor)
-    return _envelope(_cached, True) if _cached is not None else await _refresh()
+    # Keep first paint fast after a free-tier cold start. The explicit refresh
+    # operation owns provider access and the global cooldown.
+    return _envelope(_cached if _cached is not None else {"results": []}, _cached is not None)
 
 @router.post("/refresh")
 async def refresh(x_demo_token: str = Header(""), x_demo_visitor: str = Header("")) -> dict[str, Any]:
