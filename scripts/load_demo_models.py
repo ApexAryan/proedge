@@ -5,7 +5,7 @@ import io
 import os
 import tarfile
 from pathlib import Path
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import psycopg2
 
@@ -23,7 +23,9 @@ def normalize_neon_url(url: str) -> str:
         auth += "@"
     port = f":{parts.port}" if parts.port else ""
     netloc = f"{auth}{host}.aws.neon.tech{port}"
-    return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query["sslmode"] = "require"
+    return urlunsplit((parts.scheme, netloc, "/proedge_demo", urlencode(query), parts.fragment))
 
 
 def main() -> None:
