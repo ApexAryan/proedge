@@ -539,6 +539,7 @@ async def scan_markets(req: MarketScanRequest, db: AsyncSession = Depends(get_db
                 sport=sport,
                 home_team=home_team,
                 away_team=away_team,
+                game_date=game_dt,
                 kalshi_implied_line=implied_line,
                 model_prob_over=p_data["prob_over"],
                 model_prob_under=p_data["prob_under"],

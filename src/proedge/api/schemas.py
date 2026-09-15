@@ -208,6 +208,7 @@ class MarketScanGameResult(BaseModel):
     sport: str
     home_team: str
     away_team: str
+    game_date: datetime
     kalshi_implied_line: float
     model_prob_over: float
     model_prob_under: float

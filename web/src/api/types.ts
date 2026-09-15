@@ -19,6 +19,7 @@ export interface MarketScanGame {
   sport: Sport
   home_team: string
   away_team: string
+  game_date: string
   kalshi_implied_line: number
   model_prob_over: number
   model_prob_under: number
